@@ -69,7 +69,7 @@ const topLoser = computed(
       </div>
       <div class="list dashboard-feed__list">
         <article
-          v-for="tx in recentTransactions.slice(0, 6)"
+          v-for="tx in recentTransactions.slice(0, 5)"
           :key="tx.id"
           class="dashboard-feed__item"
         >

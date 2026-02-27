@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useMMarket } from "~/composables/useMMarket";
 import { useLocale } from "~/composables/useLocale";
@@ -16,7 +16,9 @@ const loginPassword = ref("");
 const registerName = ref("");
 const registerUsername = ref("");
 const registerPassword = ref("");
+const registerAvatarIndex = ref(0);
 const authMessage = ref("");
+const avatarOptions = computed(() => Array.from({ length: 25 }, (_, index) => index));
 
 const openLogin = () => {
   authMessage.value = "";
@@ -30,6 +32,8 @@ const openRegister = () => {
   showRegister.value = true;
 };
 
+const avatarPath = (index: number) => `/images/avatars/${index}.png`;
+
 const submitLogin = () => {
   const result = login(loginUsername.value, loginPassword.value);
   authMessage.value = result.message;
@@ -41,19 +45,29 @@ const submitLogin = () => {
 };
 
 const submitRegister = () => {
-  const result = register(registerName.value, registerUsername.value, registerPassword.value);
+  const result = register(
+    registerName.value,
+    registerUsername.value,
+    registerPassword.value,
+    registerAvatarIndex.value,
+  );
   authMessage.value = result.message;
   if (result.ok) {
     showRegister.value = false;
     registerName.value = "";
     registerUsername.value = "";
     registerPassword.value = "";
+    registerAvatarIndex.value = 0;
   }
 };
 
 const signOut = () => {
   logout();
   authMessage.value = t("auth.loggedOut");
+};
+
+const refreshBalance = () => {
+  if (typeof window !== "undefined") window.location.reload();
 };
 
 const links = [
@@ -84,9 +98,18 @@ const links = [
             <button v-if="!currentUser" class="btn btn--primary" type="button" @click="openRegister">
               {{ t("auth.register") }}
             </button>
-            <button v-if="currentUser" class="btn btn--danger" type="button" @click="signOut">
-              {{ t("auth.logout") }}
-            </button>
+            <div v-if="currentUser" class="topbar__player">
+              <img :src="avatarPath(currentUser.avatarIndex || 0)" alt="" class="topbar__avatar" />
+              <div class="topbar__player-main">
+                <p class="topbar__player-name">{{ currentUser.displayName }}</p>
+                <p class="topbar__player-coin">
+                  {{ currentUser.coin }} <img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
+                </p>
+              </div>
+              <button class="btn topbar__balance-refresh" type="button" :aria-label="t('sidebar.refreshBalance')" @click="refreshBalance">
+                ↻
+              </button>
+            </div>
             <button class="btn hamburger-btn" type="button" :aria-label="t('sidebar.menu')" @click="showPanel = true">
               <span></span>
               <span></span>
@@ -116,6 +139,22 @@ const links = [
       <slot />
     </main>
 
+    <NuxtLink class="arena-fab" to="/arena" :aria-label="t('nav.arena')">
+      <span class="arena-fab__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8.1 7.2h7.8c2 0 3.2.6 3.8 2l1.1 2.7c.6 1.5.5 3.2-.2 4.6l-.7 1.4c-.4.8-1.2 1.3-2.1 1.3-.9 0-1.8-.5-2.2-1.3l-.8-1.5h-5.6l-.8 1.5c-.4.8-1.2 1.3-2.2 1.3-.9 0-1.7-.5-2.1-1.3l-.7-1.4c-.7-1.4-.8-3.1-.2-4.6L4.3 9.2c.6-1.4 1.8-2 3.8-2z" />
+          <rect x="5.7" y="10.4" width="3.1" height="1.1" rx=".4" fill="#f5f5f5" />
+          <rect x="6.7" y="9.4" width="1.1" height="3.1" rx=".4" fill="#f5f5f5" />
+          <circle cx="16.3" cy="10.2" r=".8" fill="#f5f5f5" />
+          <circle cx="18.1" cy="11.3" r=".8" fill="#f5f5f5" />
+          <circle cx="14.7" cy="11.9" r=".8" fill="#f5f5f5" />
+          <circle cx="16.5" cy="13" r=".8" fill="#f5f5f5" />
+          <circle cx="10.1" cy="13.2" r="1.1" fill="#f5f5f5" opacity=".95" />
+          <circle cx="13.9" cy="13.2" r="1.1" fill="#f5f5f5" opacity=".95" />
+        </svg>
+      </span>
+    </NuxtLink>
+
     <Transition name="slideover">
       <div v-if="showPanel" class="slideover" @click.self="showPanel = false">
         <aside class="slideover__panel">
@@ -136,10 +175,18 @@ const links = [
             <section class="slideover__block">
               <p class="slideover__label">{{ t("sidebar.profile") }}</p>
               <div v-if="currentUser" class="slideover__profile">
+                <img :src="avatarPath(currentUser.avatarIndex || 0)" alt="" class="slideover__avatar" />
+                <p class="slideover__name">{{ currentUser.displayName }}</p>
                 <div class="slideover__meta-list">
                   <p class="slideover__meta"><span>{{ t("common.coin") }}</span><strong>{{ currentUser.coin }}</strong></p>
                   <p class="slideover__meta"><span>{{ t("common.debt") }}</span><strong>{{ currentUser.bankDebt }}</strong></p>
                 </div>
+                <button class="btn slideover__refresh" type="button" @click="showPanel = false; refreshBalance()">
+                  {{ t("sidebar.refreshBalance") }}
+                </button>
+                <button class="btn btn--danger slideover__logout" type="button" @click="showPanel = false; signOut()">
+                  {{ t("auth.logout") }}
+                </button>
               </div>
               <button
                 v-else
@@ -362,6 +409,23 @@ const links = [
               :placeholder="t('auth.passwordPlaceholder')"
               required
             />
+          </div>
+          <div class="field">
+            <label>{{ t("auth.avatar") }}</label>
+            <p class="muted auth-avatar__hint">{{ t("auth.avatarHint") }}</p>
+            <div class="auth-avatar-grid">
+              <button
+                v-for="index in avatarOptions"
+                :key="`avatar-${index}`"
+                type="button"
+                class="auth-avatar-grid__item"
+                :class="{ 'is-active': registerAvatarIndex === index }"
+                :aria-label="`${t('auth.avatar')} ${index}`"
+                @click="registerAvatarIndex = index"
+              >
+                <img :src="avatarPath(index)" :alt="`avatar-${index}`" />
+              </button>
+            </div>
           </div>
           <button class="btn btn--primary auth-modal__submit" type="submit">{{ t("auth.register") }}</button>
           <button class="btn auth-modal__alt" type="button" @click="showRegister = false; openLogin()">

@@ -25,23 +25,7 @@ const podium = computed(() => {
   ].filter(Boolean)
 })
 
-const avatarSeed = (name: string) =>
-  [...name].reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
-
-const avatarStyle = (name: string) => {
-  const seed = avatarSeed(name) % 360
-  return {
-    background: `linear-gradient(135deg, hsl(${seed} 75% 62%), hsl(${(seed + 42) % 360} 70% 48%))`
-  }
-}
-
-const avatarText = (name: string) =>
-  name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() || "")
-    .join("") || "P"
+const avatarPath = (index: number) => `/images/avatars/${index}.png`
 
 const leaderboardScore = (coin: number) => coin
 
@@ -51,7 +35,7 @@ const leaderboardScore = (coin: number) => coin
   <div class="leaderboard-page">
     <h1 class="title leaderboard-title">
       <span class="leaderboard-title__icon" aria-hidden="true">🏆</span>
-      Leaderboard
+      {{ t("players.leaderboard") }}
     </h1>
 
     <section class="leaderboard-podium">
@@ -62,10 +46,13 @@ const leaderboardScore = (coin: number) => coin
         :class="`is-${player.place}`"
       >
         <p class="leaderboard-podium__name">{{ player.displayName }}</p>
+        <p class="leaderboard-podium__username">@{{ player.username }}</p>
         <div class="leaderboard-podium__avatar-ring">
-          <span class="leaderboard-avatar" :style="avatarStyle(player.displayName)">
-            {{ avatarText(player.displayName) }}
-          </span>
+          <img
+            :src="avatarPath(player.avatarIndex || 0)"
+            :alt="player.displayName"
+            class="leaderboard-avatar"
+          />
         </div>
         <div class="leaderboard-podium__block">
           <img src="/images/m-coin.svg" alt="M-coin" class="leaderboard-podium__badge" />
@@ -90,12 +77,7 @@ const leaderboardScore = (coin: number) => coin
           <tr v-for="(player, index) in remainingPlayers" :key="player.id">
             <td>{{ index + 4 }}</td>
             <td>
-              <div class="leaderboard-player">
-                <span class="leaderboard-avatar leaderboard-avatar--sm" :style="avatarStyle(player.displayName)">
-                  {{ avatarText(player.displayName) }}
-                </span>
-                <span>{{ player.displayName }}</span>
-              </div>
+              <strong>{{ player.displayName }}</strong>
             </td>
             <td class="value--coin">{{ player.coin }}</td>
             <td>{{ player.bankDebt }}</td>

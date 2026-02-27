@@ -10,7 +10,7 @@ const receiverId = ref('')
 const amount = ref<number | null>(null)
 const note = ref('')
 const message = ref('')
-const quickAmounts = [2, 5, 10, 15, 20]
+const quickAmounts = [10, 20, 50, 100, 200]
 
 const receivers = computed(() => allPlayers.value.filter((player) => player.id !== currentUser.value?.id))
 
