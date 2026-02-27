@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844" role="img" aria-label="M-Market mobile first screen preview">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a221a"/>
+      <stop offset="100%" stop-color="#04110d"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#123429"/>
+      <stop offset="100%" stop-color="#0b241b"/>
+    </linearGradient>
+    <linearGradient id="cta" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#35f5a8"/>
+      <stop offset="100%" stop-color="#16b775"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="390" height="844" fill="url(#bg)"/>
+  <circle cx="40" cy="-30" r="180" fill="#1c5a42" opacity="0.28"/>
+  <circle cx="390" cy="20" r="130" fill="#134834" opacity="0.22"/>
+
+  <rect x="0" y="0" width="390" height="72" fill="#071912" opacity="0.9"/>
+  <circle cx="28" cy="36" r="14" fill="#2de29a"/>
+  <text x="50" y="41" fill="#dcffe9" font-family="Avenir Next, Segoe UI, Arial" font-size="18" font-weight="700">M-Market</text>
+  <rect x="294" y="22" width="76" height="28" rx="10" fill="#15382b" stroke="#23664d"/>
+  <text x="332" y="41" text-anchor="middle" fill="#a2d7bf" font-family="Avenir Next, Segoe UI, Arial" font-size="12">P23 Market</text>
+
+  <rect x="16" y="92" width="358" height="134" rx="16" fill="url(#card)" stroke="#235642"/>
+  <text x="30" y="120" fill="#a3d9be" font-family="Avenir Next, Segoe UI, Arial" font-size="12">Gamified Office Ledger</text>
+  <text x="30" y="152" fill="#ebfff3" font-family="Avenir Next, Segoe UI, Arial" font-size="26" font-weight="800">Dashboard</text>
+  <text x="30" y="178" fill="#8fc5ad" font-family="Avenir Next, Segoe UI, Arial" font-size="13">Public wins, losses, debt and coin</text>
+  <circle cx="336" cy="158" r="28" fill="#32f4a5"/>
+  <text x="336" y="164" text-anchor="middle" fill="#063423" font-family="Avenir Next, Segoe UI, Arial" font-size="20" font-weight="900">M</text>
+
+  <rect x="16" y="240" width="171" height="96" rx="14" fill="url(#card)" stroke="#235642"/>
+  <text x="28" y="266" fill="#8fc5ad" font-family="Avenir Next, Segoe UI, Arial" font-size="12">Total Player Coin</text>
+  <text x="28" y="298" fill="#32f4a5" font-family="Avenir Next, Segoe UI, Arial" font-size="24" font-weight="800">350</text>
+  <text x="92" y="298" fill="#32f4a5" font-family="Avenir Next, Segoe UI, Arial" font-size="13">M-Coin</text>
+
+  <rect x="203" y="240" width="171" height="96" rx="14" fill="url(#card)" stroke="#235642"/>
+  <text x="215" y="266" fill="#8fc5ad" font-family="Avenir Next, Segoe UI, Arial" font-size="12">Total Bank Debt</text>
+  <text x="215" y="298" fill="#ebfff3" font-family="Avenir Next, Segoe UI, Arial" font-size="24" font-weight="800">70</text>
+  <text x="262" y="298" fill="#ebfff3" font-family="Avenir Next, Segoe UI, Arial" font-size="13">M-Coin</text>
+
+  <rect x="16" y="352" width="358" height="278" rx="16" fill="url(#card)" stroke="#235642"/>
+  <text x="30" y="380" fill="#ebfff3" font-family="Avenir Next, Segoe UI, Arial" font-size="18" font-weight="700">Live Feed</text>
+
+  <rect x="28" y="396" width="334" height="66" rx="12" fill="#0e2b20" stroke="#214f3b"/>
+  <text x="42" y="420" fill="#dcffe9" font-family="Avenir Next, Segoe UI, Arial" font-size="13" font-weight="700">Transfer</text>
+  <text x="338" y="420" text-anchor="end" fill="#32f4a5" font-family="Avenir Next, Segoe UI, Arial" font-size="13" font-weight="700">50 M-Coin</text>
+  <text x="42" y="444" fill="#86bba3" font-family="Avenir Next, Segoe UI, Arial" font-size="12">Player 1 -> Player 3 • table A</text>
+
+  <rect x="28" y="472" width="334" height="66" rx="12" fill="#0e2b20" stroke="#214f3b"/>
+  <text x="42" y="496" fill="#dcffe9" font-family="Avenir Next, Segoe UI, Arial" font-size="13" font-weight="700">Transfer</text>
+  <text x="338" y="496" text-anchor="end" fill="#32f4a5" font-family="Avenir Next, Segoe UI, Arial" font-size="13" font-weight="700">50 M-Coin</text>
+  <text x="42" y="520" fill="#86bba3" font-family="Avenir Next, Segoe UI, Arial" font-size="12">Player 3 -> Player 4 • table B</text>
+
+  <rect x="0" y="770" width="390" height="74" fill="#081b14" stroke="#1d4b38"/>
+  <text x="42" y="814" fill="#8fc5ad" font-family="Avenir Next, Segoe UI, Arial" font-size="12">Home</text>
+  <text x="109" y="814" fill="#8fc5ad" font-family="Avenir Next, Segoe UI, Arial" font-size="12">Players</text>
+
+  <circle cx="195" cy="768" r="30" fill="url(#cta)" stroke="#0b2a20" stroke-width="4"/>
+  <text x="195" y="773" text-anchor="middle" fill="#042016" font-family="Avenir Next, Segoe UI, Arial" font-size="18" font-weight="900">M</text>
+  <text x="195" y="814" text-anchor="middle" fill="#dcffe9" font-family="Avenir Next, Segoe UI, Arial" font-size="12">Transfer</text>
+
+  <text x="287" y="814" fill="#8fc5ad" font-family="Avenir Next, Segoe UI, Arial" font-size="12">History</text>
+  <text x="346" y="814" fill="#8fc5ad" font-family="Avenir Next, Segoe UI, Arial" font-size="12">Bank</text>
+</svg>

@@ -1,0 +1,97 @@
+<script setup lang="ts">
+import { ref } from "vue"
+import { useMMarket } from "~/composables/useMMarket"
+import { useLocale } from "~/composables/useLocale"
+
+const { currentUser, borrowFromBank, repayToBank, thbValue, exchangeRate } = useMMarket()
+const { t } = useLocale()
+
+const mode = ref<'borrow' | 'repay'>('borrow')
+const amount = ref<number | null>(null)
+const note = ref('')
+const message = ref('')
+
+const submit = () => {
+  const coin = Number(amount.value)
+  const result = mode.value === 'borrow'
+    ? borrowFromBank(coin, note.value)
+    : repayToBank(coin, note.value)
+  message.value = result.message
+  if (result.ok) {
+    amount.value = null
+    note.value = ''
+  }
+}
+</script>
+
+<template>
+  <section class="bank-page">
+    <div class="card bank-shell">
+      <header class="bank-head">
+        <div>
+          <h1 class="title">{{ t("bank.title") }}</h1>
+          <p class="muted">{{ t("bank.exchange", { rate: exchangeRate }) }}</p>
+        </div>
+        <span class="pill">{{ t("bank.personal") }}</span>
+      </header>
+
+      <div v-if="currentUser" class="bank-balance-grid">
+        <article class="bank-balance bank-balance--coin">
+          <p class="bank-balance__label">{{ t("bank.myCoin") }}</p>
+          <p class="value value--coin">
+            {{ currentUser.coin }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit" />
+          </p>
+        </article>
+        <article class="bank-balance bank-balance--debt">
+          <p class="bank-balance__label">{{ t("bank.myDebt") }}</p>
+          <p class="value">
+            {{ currentUser.bankDebt }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit" />
+          </p>
+        </article>
+      </div>
+
+      <form class="form bank-form" @submit.prevent="submit">
+        <div class="bank-mode">
+          <button
+            class="bank-mode__btn"
+            type="button"
+            :class="{ 'is-active': mode === 'borrow' }"
+            :disabled="!currentUser"
+            @click="mode = 'borrow'"
+          >
+            {{ t("bank.borrow") }}
+          </button>
+          <button
+            class="bank-mode__btn"
+            type="button"
+            :class="{ 'is-active': mode === 'repay' }"
+            :disabled="!currentUser"
+            @click="mode = 'repay'"
+          >
+            {{ t("bank.repay") }}
+          </button>
+        </div>
+
+        <div class="field">
+          <label for="bank-amount">{{ t("transfer.amount") }}</label>
+          <div class="bank-amount-wrap">
+            <input id="bank-amount" v-model.number="amount" class="input bank-amount-input" type="number" min="1" required :disabled="!currentUser" />
+            <span class="bank-amount-unit">MC</span>
+          </div>
+          <p v-if="amount" class="muted bank-thb-hint">{{ t("bank.thbEq", { value: thbValue(Number(amount)) }) }}</p>
+        </div>
+
+        <div class="field">
+          <label for="bank-note">{{ t("common.note") }}</label>
+          <input id="bank-note" v-model="note" class="input" :placeholder="t('bank.optional')" />
+        </div>
+
+        <button class="btn btn--primary bank-submit" type="submit" :disabled="!currentUser">
+          {{ mode === 'borrow' ? t('bank.confirmBorrow') : t('bank.confirmRepay') }}
+        </button>
+      </form>
+    </div>
+
+    <p class="muted">{{ message || (!currentUser ? t('bank.loginHint') : '') }}</p>
+  </section>
+</template>
