@@ -1,57 +1,58 @@
-# P23 Market (Frontend)
+# P23 Market (Nuxt 4)
 
-## Project Scope
-P23 Market is a frontend-first e-commerce project focused on building a complete, production-style UI with an AI-driven workflow.
+Internal office betting ledger app for tracking player-to-player transfers, bank borrow/repay, and weekly settlement snapshots.
 
-### Goals
-- Build a responsive e-commerce frontend.
-- Use AI for planning, implementation, testing, and documentation.
-- Keep code quality high with linting, typing, and tests.
+## Stack
+- Nuxt 4
+- Vue 3 + TypeScript (`<script setup lang="ts">`)
+- Custom CSS (single theme file)
 
-### Core Features (Phase 1)
-- Home page
-- Product listing page (filter/sort/pagination)
-- Product detail page
-- Cart page
-- Checkout mock flow (no real payment)
+## Core Concept
+- Currency unit: `M-coin`
+- Exchange reference: `1 coin = 10 THB`
+- Trust-based flow: no approval workflow
+- Admin-only action: run settlement
+- Public visibility: players and leaderboard are visible to everyone
 
-### Non-Functional Requirements
-- Mobile-first responsive design
-- Accessibility basics (semantic HTML, labels, keyboard support)
-- Performance basics (optimized assets, lazy loading where relevant)
-- Clean and maintainable component structure
+## Current Features
+- Login/Register dialog with password
+- Dashboard with game-style UI and match feed
+- Players leaderboard (podium top-3 + rank table)
+- Transfer page with quick amount buttons (`2, 5, 10, 15, 20`)
+- Transactions page as card list
+- Bank page (`P23-Bank`) with borrow/repay modes
+- Settlement page with:
+  - run control
+  - latest result summary
+  - payout instructions
+  - history list
+- EN/TH localization
 
-## Suggested Tech Stack
-- Framework: Next.js (or Vite + React)
-- Language: TypeScript
-- Styling: Tailwind CSS (or CSS Modules)
-- State: React Context / Zustand
-- Data: Mock API first, real API integration later
-- Testing: Vitest + React Testing Library (or Jest)
+## Project Structure
+- `pages/` route pages
+- `layouts/default.vue` app shell, topbar, slideover, auth dialogs
+- `composables/useMMarket.ts` mock state + business logic
+- `composables/useLocale.ts` i18n messages and helpers
+- `assets/css/main.css` global design system and page styles
+- `public/images/m-coin.svg` coin asset
+- `API.md` backend API planning document
 
-## AI-First Development Workflow
-1. Define one feature clearly.
-2. Ask AI to implement only that feature.
-3. Ask AI to add loading/error/empty states.
-4. Ask AI to add tests.
-5. Run lint/typecheck/tests and fix all issues.
-6. Update docs after each milestone.
+## Local Development (Yarn)
+```bash
+yarn install
+yarn dev
+```
 
-### Prompt Template
-"Implement [FEATURE] in this codebase. Keep existing behavior intact. Include responsive UI, loading/error/empty states, accessibility labels, and tests. Then run lint, typecheck, and tests, and fix any failures."
+App default URL:
+- `http://localhost:3000`
 
-## Milestones
-- M1: Project setup and base layout
-- M2: Product list and product detail
-- M3: Cart and checkout mock
-- M4: Polish (a11y/performance/SEO)
-- M5: Final QA and deployment
+## Demo Accounts
+Mock users are seeded in `useMMarket.ts`.
 
-## Definition of Done
-- All scoped pages/features are implemented.
-- App is responsive on mobile/tablet/desktop.
-- Lint, typecheck, and tests pass.
-- Documentation is updated.
+- Username examples: `banker`, `player1`, `player3`, `player4`
+- Default password for seeded users: `1234`
 
-## Next Step
-Initialize the frontend app scaffold (Next.js or Vite) and implement Milestone M1.
+## Notes
+- This is currently frontend/mock-data driven (no real backend yet).
+- Settlement stores snapshots in memory state.
+- See `API.md` for suggested API contracts for backend integration.
