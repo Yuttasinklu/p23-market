@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { computed } from "vue"
 import { useMMarket } from "~/composables/useMMarket"
 import { useLocale } from "~/composables/useLocale"
 
 const { recentTransactions, playerById, formatTime } = useMMarket()
 const { t } = useLocale()
+const displayTransactions = computed(() => recentTransactions.value.slice(0, 100))
 
 const refreshPage = () => {
   if (typeof window !== "undefined") window.location.reload()
@@ -17,7 +19,7 @@ const refreshPage = () => {
     </div>
 
     <div class="transactions-list">
-      <article v-for="tx in recentTransactions" :key="tx.id" class="transactions-card">
+      <article v-for="tx in displayTransactions" :key="tx.id" class="transactions-card">
         <div class="transactions-card__top">
           <p class="transactions-route">
             <span class="transactions-player">{{ playerById(tx.fromUserId)?.displayName || t("common.bank") }}</span>
@@ -31,7 +33,7 @@ const refreshPage = () => {
         <p class="transactions-note">{{ tx.note || "-" }}</p>
         <p class="transactions-time">{{ formatTime(tx.createdAt) }}</p>
       </article>
-      <p v-if="recentTransactions.length === 0" class="muted">{{ t("common.noData") }}</p>
+      <p v-if="displayTransactions.length === 0" class="muted">{{ t("common.noData") }}</p>
     </div>
   </section>
 </template>

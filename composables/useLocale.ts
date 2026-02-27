@@ -143,7 +143,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "about.currencyHint": "THB is shown on Bank/About only, so transaction pages stay clean.",
     "about.disclaimerTitle": "Disclaimer",
     "about.disclaimerBody":
-      "P23 Market is an internal record tool for office activities. It does not provide legal, financial, or gambling advice. Users are responsible for their own entries and agreements.",
+      "P23 Market is an internal record tool for office activities. It does not provide legal, financial, or gambling advice, and does not support gambling. Users are responsible for their own entries and agreements.",
     "about.securityTitle": "Security",
     "about.securityBody":
       "This version is trust-based and lightweight. Use strong office access controls, avoid sharing accounts, and validate critical settlement data before final confirmation.",
@@ -294,7 +294,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "about.currencyHint": "แสดง THB เฉพาะหน้า Bank/About เพื่อให้หน้าธุรกรรมอ่านง่าย",
     "about.disclaimerTitle": "ข้อจำกัดความรับผิดชอบ",
     "about.disclaimerBody":
-      "P23 Market เป็นเครื่องมือบันทึกข้อมูลภายในออฟฟิศเท่านั้น ไม่ใช่คำแนะนำด้านกฎหมาย การเงิน หรือการพนัน ผู้ใช้งานต้องรับผิดชอบข้อมูลที่บันทึกและข้อตกลงร่วมกันเอง",
+      "P23 Market เป็นเครื่องมือบันทึกข้อมูลภายในออฟฟิศเท่านั้น ไม่ใช่คำแนะนำด้านกฎหมาย การเงิน หรือการพนัน และไม่สนับสนุนการเล่นการพนัน ผู้ใช้งานต้องรับผิดชอบข้อมูลที่บันทึกและข้อตกลงร่วมกันเอง",
     "about.securityTitle": "ความปลอดภัย",
     "about.securityBody":
       "เวอร์ชันนี้เน้นความง่ายและการเชื่อใจกัน ควรใช้การควบคุมการเข้าถึงภายในที่เหมาะสม ไม่แชร์บัญชี และตรวจสอบข้อมูลสรุปหนี้ก่อนยืนยันทุกครั้ง",

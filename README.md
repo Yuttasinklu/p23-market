@@ -1,6 +1,6 @@
 # P23 Market (Nuxt 4)
 
-Internal office betting ledger app for tracking player-to-player transfers, bank borrow/repay, and weekly settlement snapshots.
+Internal office betting ledger app for tracking player-to-player transfers and bank borrow/repay.
 
 ## Stack
 - Nuxt 4
@@ -11,7 +11,6 @@ Internal office betting ledger app for tracking player-to-player transfers, bank
 - Currency unit: `M-coin`
 - Exchange reference: `1 coin = 10 THB`
 - Trust-based flow: no approval workflow
-- Admin-only action: run settlement
 - Public visibility: players and leaderboard are visible to everyone
 
 ## Current Features
@@ -21,11 +20,6 @@ Internal office betting ledger app for tracking player-to-player transfers, bank
 - Transfer page with quick amount buttons (`2, 5, 10, 15, 20`)
 - Transactions page as card list
 - Bank page (`P23-Bank`) with borrow/repay modes
-- Settlement page with:
-  - run control
-  - latest result summary
-  - payout instructions
-  - history list
 - EN/TH localization
 
 ## Project Structure
