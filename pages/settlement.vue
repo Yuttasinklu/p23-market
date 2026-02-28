@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref } from "vue"
 import { useMMarket } from "~/composables/useMMarket"
 import { useLocale } from "~/composables/useLocale"
 import { useToast } from "~/composables/useToast"
@@ -7,6 +7,7 @@ import { useToast } from "~/composables/useToast"
 const { currentUser, runSettlement, settlementRuns, playerById, formatTime, isAuthenticated } = useMMarket()
 const { t } = useLocale()
 const { pushError, pushSuccess } = useToast()
+const isRunningSettlement = ref(false)
 
 const latestRun = computed(() => settlementRuns.value[0] || null)
 
@@ -60,16 +61,22 @@ const payoutInstructions = computed(() => {
 })
 
 const handleRun = async () => {
+  if (isRunningSettlement.value) return
   if (!isAuthenticated.value) {
     pushError(t("common.loginRequiredView"))
     return
   }
-  const result = await runSettlement()
-  if (!result.ok) {
-    pushError(result.message)
-    return
+  isRunningSettlement.value = true
+  try {
+    const result = await runSettlement()
+    if (!result.ok) {
+      pushError(result.message)
+      return
+    }
+    pushSuccess(result.message)
+  } finally {
+    isRunningSettlement.value = false
   }
-  pushSuccess(result.message)
 }
 </script>
 
@@ -91,10 +98,10 @@ const handleRun = async () => {
         <button
           class="btn btn--primary settlement-run-btn"
           type="button"
-          :disabled="currentUser?.role !== 'admin'"
+          :disabled="currentUser?.role !== 'admin' || isRunningSettlement"
           @click="handleRun"
         >
-          {{ t("settlement.run") }}
+          {{ isRunningSettlement ? "Running..." : t("settlement.run") }}
         </button>
       </div>
     </section>

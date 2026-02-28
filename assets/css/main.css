@@ -1908,8 +1908,9 @@ p {
 
 .transactions-head {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 0.8rem;
   padding: 0.95rem 1rem;
   border-color: #2a5d9c;
@@ -1926,6 +1927,18 @@ p {
 .transactions-head__refresh {
   min-height: 34px;
   flex: 0 0 auto;
+}
+
+.transactions-head__filter {
+  display: grid;
+  gap: 0.28rem;
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.transactions-head__filter label {
+  font-size: 0.72rem;
+  color: rgba(177, 215, 247, 0.9);
 }
 
 .transactions-list {
@@ -1988,20 +2001,53 @@ p {
   margin: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.32rem;
+  gap: 0.46rem;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .transactions-player {
   display: inline-flex;
   align-items: center;
+  gap: 0.44rem;
   border: 1px solid #2b5c9d;
-  border-radius: 8px;
-  padding: 0.16rem 0.45rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.56rem 0.2rem 0.3rem;
   color: #e8f4ff;
   background: rgba(19, 47, 86, 0.65);
-  font-size: 0.84rem;
-  max-width: 36vw;
+  font-size: 0.92rem;
+  max-width: 44vw;
+}
+
+.transactions-player--bank {
+  justify-content: center;
+  min-width: 94px;
+}
+
+.transactions-player__avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(139, 194, 255, 0.45);
+  background: rgba(7, 26, 53, 0.7);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transactions-player__avatar--bank svg {
+  width: 16px;
+  height: 16px;
+}
+
+.transactions-player__avatar--profile svg {
+  width: 15px;
+  height: 15px;
+}
+
+.transactions-player__name {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2009,7 +2055,7 @@ p {
 
 .transactions-arrow {
   color: #8eb5e7;
-  font-size: 0.76rem;
+  font-size: 0.88rem;
 }
 
 .transactions-amount {
@@ -2252,6 +2298,29 @@ p {
 
 .bank-head .title {
   margin-bottom: 0.28rem;
+}
+
+.bank-warning {
+  border: 1px dashed rgba(124, 181, 243, 0.52);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  background: linear-gradient(180deg, rgba(17, 41, 74, 0.82), rgba(10, 25, 48, 0.88));
+}
+
+.bank-warning__title {
+  margin: 0 0 0.2rem;
+  font-size: 0.76rem;
+  color: #ffd781;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 800;
+}
+
+.bank-warning__text {
+  margin: 0;
+  color: #c7dfff;
+  font-size: 0.85rem;
+  line-height: 1.35;
 }
 
 .bank-balance-grid {
@@ -2945,6 +3014,12 @@ p {
   .transactions-head {
     padding: 0.85rem;
     gap: 0.55rem;
+    align-items: stretch;
+  }
+
+  .transactions-head__filter {
+    min-width: 100%;
+    flex-basis: 100%;
   }
 
   .transactions-card {
@@ -2961,9 +3036,18 @@ p {
   }
 
   .transactions-player {
-    padding: 0.12rem 0.28rem;
-    font-size: 0.75rem;
+    padding: 0.12rem 0.34rem 0.12rem 0.18rem;
+    font-size: 0.82rem;
     max-width: 30vw;
+  }
+
+  .transactions-player__avatar {
+    width: 20px;
+    height: 20px;
+  }
+
+  .transactions-player--bank {
+    min-width: 82px;
   }
 
   .transactions-note {

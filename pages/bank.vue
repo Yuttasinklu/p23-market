@@ -50,6 +50,11 @@ const submit = async () => {
         <span class="pill">{{ t("bank.personal") }}</span>
       </header>
 
+      <article class="bank-warning" role="note" aria-live="polite">
+        <p class="bank-warning__title">{{ t("bank.warningTitle") }}</p>
+        <p class="bank-warning__text">{{ t("bank.warningBody") }}</p>
+      </article>
+
       <div v-if="currentUser" class="bank-balance-grid">
         <article class="bank-balance bank-balance--coin">
           <p class="bank-balance__label">{{ t("bank.myCoin") }}</p>

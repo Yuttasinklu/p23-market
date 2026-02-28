@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref } from "vue"
 import { useMMarket } from "~/composables/useMMarket"
 import { useLocale } from "~/composables/useLocale"
 
 const { leaderboard, refreshLeaderboardOnly } = useMMarket()
 const { t } = useLocale()
+const isRefreshing = ref(false)
 
 const rankedPlayers = computed(() => [...leaderboard.value])
 
@@ -25,7 +26,13 @@ const avatarPath = (index: number) => `/images/avatars/${index}.png`
 
 const leaderboardScore = (coin: number) => coin
 const refreshLeaderboard = async () => {
-  await refreshLeaderboardOnly()
+  if (isRefreshing.value) return
+  isRefreshing.value = true
+  try {
+    await refreshLeaderboardOnly()
+  } finally {
+    isRefreshing.value = false
+  }
 }
 
 </script>
@@ -37,7 +44,9 @@ const refreshLeaderboard = async () => {
         <span class="leaderboard-title__icon" aria-hidden="true">🏆</span>
         {{ t("players.leaderboard") }}
       </h1>
-      <button type="button" class="btn" @click="refreshLeaderboard">Refresh</button>
+      <button type="button" class="btn" :disabled="isRefreshing" @click="refreshLeaderboard">
+        {{ isRefreshing ? "Loading..." : "Refresh" }}
+      </button>
     </div>
 
     <section class="leaderboard-podium">

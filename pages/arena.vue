@@ -44,6 +44,7 @@ const showVersusModal = ref(false)
 const showHistoryModal = ref(false)
 const loadingRooms = ref(false)
 const loadingMatches = ref(false)
+const isCreatingRoom = ref(false)
 const amount = ref(50)
 const choice = ref<ArenaChoice>("rock")
 const myChoice = ref<ArenaChoice | null>(null)
@@ -155,11 +156,12 @@ const openCreateModal = () => {
 }
 
 const createRoom = async () => {
+  if (isCreatingRoom.value) return
   if (!currentUser.value) {
     pushError(t("arena.loginHint"))
     return
   }
-
+  isCreatingRoom.value = true
   try {
     await apiFetch("arena/rooms", {
       method: "POST",
@@ -174,6 +176,8 @@ const createRoom = async () => {
     await Promise.all([refreshRooms(), reloadData()])
   } catch (error) {
     pushError(extractApiError(error, t("arena.loginHint")))
+  } finally {
+    isCreatingRoom.value = false
   }
 }
 
@@ -320,7 +324,7 @@ onBeforeUnmount(() => {
               <button
                 type="button"
                 class="arena-amount-step__btn"
-                :disabled="amount <= minAmount"
+                :disabled="amount <= minAmount || isCreatingRoom"
                 @click="decreaseAmount"
               >
                 -
@@ -329,6 +333,7 @@ onBeforeUnmount(() => {
               <button
                 type="button"
                 class="arena-amount-step__btn"
+                :disabled="isCreatingRoom"
                 @click="increaseAmount"
               >
                 +
@@ -345,6 +350,7 @@ onBeforeUnmount(() => {
                 type="button"
                 class="arena-options__btn arena-options__btn--choice"
                 :class="{ 'is-active': choice === item.value }"
+                :disabled="isCreatingRoom"
                 @click="choice = item.value"
               >
                 <img :src="item.image" :alt="item.label" class="arena-choice-card" />
@@ -352,7 +358,9 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <button class="btn btn--primary" type="submit">{{ t("arena.confirmCreate") }}</button>
+          <button class="btn btn--primary" type="submit" :disabled="isCreatingRoom">
+            {{ isCreatingRoom ? "Creating..." : t("arena.confirmCreate") }}
+          </button>
         </form>
       </div>
     </div>

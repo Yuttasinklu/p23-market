@@ -15,6 +15,9 @@ const showRegister = ref(false);
 const showPanel = ref(false);
 const loginUsername = ref("");
 const loginPassword = ref("");
+const isLoginSubmitting = ref(false);
+const isRegisterSubmitting = ref(false);
+const isBalanceRefreshing = ref(false);
 const registerName = ref("");
 const registerUsername = ref("");
 const registerPassword = ref("");
@@ -34,29 +37,41 @@ const openRegister = () => {
 const avatarPath = (index: number) => `/images/avatars/${index}.png`;
 
 const submitLogin = async () => {
-  const result = await login(loginUsername.value, loginPassword.value);
-  if (!result.ok) pushError(result.message);
-  if (result.ok) {
-    showLogin.value = false;
-    loginUsername.value = "";
-    loginPassword.value = "";
+  if (isLoginSubmitting.value) return;
+  isLoginSubmitting.value = true;
+  try {
+    const result = await login(loginUsername.value, loginPassword.value);
+    if (!result.ok) pushError(result.message);
+    if (result.ok) {
+      showLogin.value = false;
+      loginUsername.value = "";
+      loginPassword.value = "";
+    }
+  } finally {
+    isLoginSubmitting.value = false;
   }
 };
 
 const submitRegister = async () => {
-  const result = await register(
-    registerName.value,
-    registerUsername.value,
-    registerPassword.value,
-    registerAvatarIndex.value,
-  );
-  if (!result.ok) pushError(result.message);
-  if (result.ok) {
-    showRegister.value = false;
-    registerName.value = "";
-    registerUsername.value = "";
-    registerPassword.value = "";
-    registerAvatarIndex.value = 0;
+  if (isRegisterSubmitting.value) return;
+  isRegisterSubmitting.value = true;
+  try {
+    const result = await register(
+      registerName.value,
+      registerUsername.value,
+      registerPassword.value,
+      registerAvatarIndex.value,
+    );
+    if (!result.ok) pushError(result.message);
+    if (result.ok) {
+      showRegister.value = false;
+      registerName.value = "";
+      registerUsername.value = "";
+      registerPassword.value = "";
+      registerAvatarIndex.value = 0;
+    }
+  } finally {
+    isRegisterSubmitting.value = false;
   }
 };
 
@@ -65,7 +80,13 @@ const signOut = async () => {
 };
 
 const refreshBalance = async () => {
-  await refreshCurrentUserOnly();
+  if (isBalanceRefreshing.value) return;
+  isBalanceRefreshing.value = true;
+  try {
+    await refreshCurrentUserOnly();
+  } finally {
+    isBalanceRefreshing.value = false;
+  }
 };
 
 const links = [
@@ -114,8 +135,14 @@ const desktopSecondaryLinks = links.filter(
                   {{ currentUser.coin }} <img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
                 </p>
               </div>
-              <button class="btn topbar__balance-refresh" type="button" :aria-label="t('sidebar.refreshBalance')" @click="refreshBalance">
-                ↻
+              <button
+                class="btn topbar__balance-refresh"
+                type="button"
+                :aria-label="t('sidebar.refreshBalance')"
+                :disabled="isBalanceRefreshing"
+                @click="refreshBalance"
+              >
+                {{ isBalanceRefreshing ? "..." : "↻" }}
               </button>
             </div>
             <button class="btn hamburger-btn" type="button" :aria-label="t('sidebar.menu')" @click="showPanel = true">
@@ -212,8 +239,13 @@ const desktopSecondaryLinks = links.filter(
                   </article>
                 </div>
                 <div class="slideover__profile-actions">
-                  <button class="btn slideover__refresh" type="button" @click="showPanel = false; refreshBalance()">
-                    {{ t("sidebar.refreshBalance") }}
+                  <button
+                    class="btn slideover__refresh"
+                    type="button"
+                    :disabled="isBalanceRefreshing"
+                    @click="showPanel = false; refreshBalance()"
+                  >
+                    {{ isBalanceRefreshing ? "..." : t("sidebar.refreshBalance") }}
                   </button>
                   <button class="btn btn--danger slideover__logout" type="button" @click="showPanel = false; signOut()">
                     {{ t("auth.logout") }}
@@ -389,6 +421,7 @@ const desktopSecondaryLinks = links.filter(
               v-model="loginUsername"
               class="input"
               :placeholder="t('auth.loginPlaceholder')"
+              :disabled="isLoginSubmitting"
               required
             />
           </div>
@@ -400,11 +433,14 @@ const desktopSecondaryLinks = links.filter(
               class="input"
               type="password"
               :placeholder="t('auth.passwordPlaceholder')"
+              :disabled="isLoginSubmitting"
               required
             />
           </div>
-          <button class="btn btn--primary auth-modal__submit" type="submit">{{ t("auth.login") }}</button>
-          <button class="btn auth-modal__alt" type="button" @click="showLogin = false; openRegister()">
+          <button class="btn btn--primary auth-modal__submit" type="submit" :disabled="isLoginSubmitting">
+            {{ isLoginSubmitting ? "Logging in..." : t("auth.login") }}
+          </button>
+          <button class="btn auth-modal__alt" type="button" :disabled="isLoginSubmitting" @click="showLogin = false; openRegister()">
             {{ t("auth.register") }}
           </button>
         </form>
@@ -421,7 +457,7 @@ const desktopSecondaryLinks = links.filter(
               <p class="auth-modal__subtitle">{{ t("auth.registerHint") }}</p>
             </div>
           </div>
-          <button class="btn auth-modal__close" type="button" @click="showRegister = false">✕</button>
+          <button class="btn auth-modal__close" type="button" :disabled="isRegisterSubmitting" @click="showRegister = false">✕</button>
         </header>
         <form class="form auth-modal__form" @submit.prevent="submitRegister">
           <div class="field">
@@ -431,6 +467,7 @@ const desktopSecondaryLinks = links.filter(
               v-model="registerName"
               class="input"
               :placeholder="t('auth.registerNamePlaceholder')"
+              :disabled="isRegisterSubmitting"
               required
             />
           </div>
@@ -441,6 +478,7 @@ const desktopSecondaryLinks = links.filter(
               v-model="registerUsername"
               class="input"
               :placeholder="t('auth.registerUserPlaceholder')"
+              :disabled="isRegisterSubmitting"
               required
             />
           </div>
@@ -452,6 +490,7 @@ const desktopSecondaryLinks = links.filter(
               class="input"
               type="password"
               :placeholder="t('auth.passwordPlaceholder')"
+              :disabled="isRegisterSubmitting"
               required
             />
           </div>
@@ -466,14 +505,17 @@ const desktopSecondaryLinks = links.filter(
                 class="auth-avatar-grid__item"
                 :class="{ 'is-active': registerAvatarIndex === index }"
                 :aria-label="`${t('auth.avatar')} ${index}`"
+                :disabled="isRegisterSubmitting"
                 @click="registerAvatarIndex = index"
               >
                 <img :src="avatarPath(index)" :alt="`avatar-${index}`" />
               </button>
             </div>
           </div>
-          <button class="btn btn--primary auth-modal__submit" type="submit">{{ t("auth.register") }}</button>
-          <button class="btn auth-modal__alt" type="button" @click="showRegister = false; openLogin()">
+          <button class="btn btn--primary auth-modal__submit" type="submit" :disabled="isRegisterSubmitting">
+            {{ isRegisterSubmitting ? "Registering..." : t("auth.register") }}
+          </button>
+          <button class="btn auth-modal__alt" type="button" :disabled="isRegisterSubmitting" @click="showRegister = false; openLogin()">
             {{ t("auth.login") }}
           </button>
         </form>

@@ -197,13 +197,22 @@ export const useMMarket = () => {
     }
   };
 
-  const refreshTransactions = async () => {
+  const refreshTransactions = async (playerId?: string) => {
     if (!authToken.value) {
       transactions.value = [];
       return;
     }
     try {
-      const response = await apiFetch<ApiTransactionResponse>("transactions?limit=100", {
+      const query = new URLSearchParams({
+        limit: "100"
+      });
+      const normalizedPlayerId =
+        typeof playerId === "string" && playerId.trim() && playerId !== "all"
+          ? playerId.trim()
+          : "";
+      if (normalizedPlayerId) query.set("playerId", normalizedPlayerId);
+
+      const response = await apiFetch<ApiTransactionResponse>(`transactions?${query.toString()}`, {
         method: "GET",
         headers: authHeaders()
       });
@@ -593,8 +602,8 @@ export const useMMarket = () => {
     await Promise.all([refreshPlayers(), refreshLeaderboard(), refreshDashboard(), refreshTransactions(), refreshSettlementRuns()]);
   };
 
-  const refreshTransactionsOnly = async () => {
-    await refreshTransactions();
+  const refreshTransactionsOnly = async (playerId?: string) => {
+    await refreshTransactions(playerId);
   };
 
   const refreshLeaderboardOnly = async () => {
