@@ -1,19 +1,23 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from "vue"
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useMMarket } from "~/composables/useMMarket"
 import { useLocale } from "~/composables/useLocale"
+import { useApi } from "~/composables/useApi"
+import { useToast } from "~/composables/useToast"
 
-type ArenaChoice = "rock" | "paper" | "scissor"
+type ArenaChoice = "rock" | "paper" | "scissors"
+type MatchResult = "win" | "lose" | "draw"
 
 interface ArenaRoom {
   id: string
   ownerId: string
+  ownerDisplayName?: string
+  ownerAvatarIndex?: number
   amount: number
-  ownerChoice: ArenaChoice
   status: "open"
   createdAt: number
 }
-type MatchResult = "win" | "lose" | "draw"
+
 interface ArenaMatch {
   id: string
   roomId: string
@@ -22,128 +26,75 @@ interface ArenaMatch {
   amount: number
   ownerChoice: ArenaChoice
   challengerChoice: ArenaChoice
-  result: MatchResult
   winnerUserId?: string
   resolvedAt: number
 }
 
-const { currentUser, playerById, formatTime } = useMMarket()
+const { currentUser, playerById, formatTime, reloadData } = useMMarket()
 const { t } = useLocale()
-const nowUnix = () => Math.floor(Date.now() / 1000)
+const { apiFetch } = useApi()
+const { pushError, pushSuccess } = useToast()
 
-const rooms = useState<ArenaRoom[]>("arena-rooms", () => [
-  {
-    id: "r1",
-    ownerId: "u2",
-    amount: 25,
-    ownerChoice: "rock",
-    status: "open",
-    createdAt: nowUnix() - 60 * 18
-  },
-  {
-    id: "r2",
-    ownerId: "u4",
-    amount: 50,
-    ownerChoice: "paper",
-    status: "open",
-    createdAt: nowUnix() - 60 * 9
-  },
-  {
-    id: "r3",
-    ownerId: "u8",
-    amount: 15,
-    ownerChoice: "scissor",
-    status: "open",
-    createdAt: nowUnix() - 60 * 4
-  },
-  {
-    id: "r4",
-    ownerId: "u3",
-    amount: 60,
-    ownerChoice: "rock",
-    status: "open",
-    createdAt: nowUnix() - 60 * 25
-  },
-  {
-    id: "r5",
-    ownerId: "u6",
-    amount: 35,
-    ownerChoice: "paper",
-    status: "open",
-    createdAt: nowUnix() - 60 * 12
-  },
-  {
-    id: "r6",
-    ownerId: "u10",
-    amount: 80,
-    ownerChoice: "scissor",
-    status: "open",
-    createdAt: nowUnix() - 60 * 7
-  },
-  {
-    id: "r7",
-    ownerId: "u11",
-    amount: 45,
-    ownerChoice: "paper",
-    status: "open",
-    createdAt: nowUnix() - 60 * 2
-  }
-])
+const authToken = useState<string | null>("authToken", () => null)
+const rooms = useState<ArenaRoom[]>("arena-rooms", () => [])
+const matches = useState<ArenaMatch[]>("arena-matches", () => [])
+
 const showCreateModal = ref(false)
 const showVersusModal = ref(false)
 const showHistoryModal = ref(false)
+const loadingRooms = ref(false)
+const loadingMatches = ref(false)
 const amount = ref(50)
 const choice = ref<ArenaChoice>("rock")
 const myChoice = ref<ArenaChoice | null>(null)
+const revealedOwnerChoice = ref<ArenaChoice | null>(null)
 const matchResult = ref<MatchResult | null>(null)
 const activeRoom = ref<ArenaRoom | null>(null)
 const isResolving = ref(false)
 const resolveTimer = ref<ReturnType<typeof setTimeout> | null>(null)
-const message = ref("")
+const roomsInterval = ref<ReturnType<typeof setInterval> | null>(null)
 const amountStep = 5
 const minAmount = 5
+
+const authHeaders = computed(() =>
+  authToken.value ? { Authorization: `Bearer ${authToken.value}` } : {}
+)
+
 const choiceOptions = computed<Array<{ value: ArenaChoice; label: string; image: string }>>(() => [
   { value: "rock", label: t("arena.choiceRock"), image: "/images/rps-rock-card.png" },
   { value: "paper", label: t("arena.choicePaper"), image: "/images/rps-paper-card.png" },
-  { value: "scissor", label: t("arena.choiceScissor"), image: "/images/rps-scissor-card.png" }
+  { value: "scissors", label: t("arena.choiceScissor"), image: "/images/rps-scissor-card.png" }
 ])
-const matches = useState<ArenaMatch[]>("arena-matches", () => [
-  {
-    id: "m1",
-    roomId: "r91",
-    ownerId: "u4",
-    challengerId: "u2",
-    amount: 25,
-    ownerChoice: "rock",
-    challengerChoice: "paper",
-    result: "lose",
-    winnerUserId: "u2",
-    resolvedAt: nowUnix() - 60 * 20
-  },
-  {
-    id: "m2",
-    roomId: "r92",
-    ownerId: "u8",
-    challengerId: "u3",
-    amount: 15,
-    ownerChoice: "paper",
-    challengerChoice: "paper",
-    result: "draw",
-    resolvedAt: nowUnix() - 60 * 8
-  }
-])
+
+const normalizeChoice = (value: unknown): ArenaChoice =>
+  value === "scissor" ? "scissors" : (value as ArenaChoice)
+
+const mapMatch = (raw: Record<string, any>): ArenaMatch => ({
+  id: String(raw.id || ""),
+  roomId: String(raw.roomId || ""),
+  ownerId: String(raw.ownerId || ""),
+  challengerId: String(raw.challengerId || ""),
+  amount: Number(raw.amount || 0),
+  ownerChoice: normalizeChoice(raw.ownerChoice),
+  challengerChoice: normalizeChoice(raw.challengerChoice),
+  winnerUserId: raw.winnerUserId || raw.result?.winnerUserId || undefined,
+  resolvedAt: Number(raw.resolvedAt || 0)
+})
 
 const openRooms = computed(() =>
   [...rooms.value].sort((a, b) => b.createdAt - a.createdAt)
 )
+
 const recentMatches = computed(() =>
   [...matches.value]
     .sort((a, b) => b.resolvedAt - a.resolvedAt)
     .slice(0, 50)
 )
+
 const activeOwner = computed(() =>
   activeRoom.value ? playerById(activeRoom.value.ownerId) : null
 )
+
 const resultText = computed(() => {
   if (!matchResult.value) return ""
   if (matchResult.value === "win") return t("arena.resultWin")
@@ -151,30 +102,79 @@ const resultText = computed(() => {
   return t("arena.resultDraw")
 })
 
+const playerName = (id?: string, fallback?: string) =>
+  playerById(id)?.displayName || fallback || id || "-"
+
+const extractApiError = (error: unknown, fallback: string) => {
+  const maybe = error as { data?: { error?: { message?: string }; message?: string }; message?: string }
+  return maybe?.data?.error?.message || maybe?.data?.message || maybe?.message || fallback
+}
+
+const refreshRooms = async () => {
+  loadingRooms.value = true
+  try {
+    const response = await apiFetch<{ items: ArenaRoom[] }>("arena/rooms", {
+      method: "GET",
+      headers: authHeaders.value
+    })
+    rooms.value = Array.isArray(response.items) ? response.items : []
+  } catch {
+    rooms.value = []
+  } finally {
+    loadingRooms.value = false
+  }
+}
+
+const refreshRoomList = async () => {
+  await refreshRooms()
+}
+
+const refreshMatches = async () => {
+  loadingMatches.value = true
+  try {
+    const response = await apiFetch<{ items: Array<Record<string, any>> }>("arena/matches", {
+      method: "GET",
+      headers: authHeaders.value
+    })
+    matches.value = Array.isArray(response.items)
+      ? response.items.map((item) => mapMatch(item))
+      : []
+  } catch {
+    matches.value = []
+  } finally {
+    loadingMatches.value = false
+  }
+}
+
 const openCreateModal = () => {
   if (!currentUser.value) {
-    message.value = t("arena.loginHint")
+    pushError(t("arena.loginHint"))
     return
   }
-  message.value = ""
   showCreateModal.value = true
 }
 
-const createRoom = () => {
+const createRoom = async () => {
   if (!currentUser.value) {
-    message.value = t("arena.loginHint")
+    pushError(t("arena.loginHint"))
     return
   }
-  rooms.value.unshift({
-    id: `r${rooms.value.length + 1}`,
-    ownerId: currentUser.value.id,
-    amount: Number(amount.value),
-    ownerChoice: choice.value,
-    status: "open",
-    createdAt: nowUnix()
-  })
-  showCreateModal.value = false
-  message.value = t("arena.created")
+
+  try {
+    await apiFetch("arena/rooms", {
+      method: "POST",
+      headers: authHeaders.value,
+      body: {
+        amount: Number(amount.value),
+        choice: choice.value
+      }
+    })
+    showCreateModal.value = false
+    pushSuccess(t("arena.created"))
+    await Promise.all([refreshRooms(), reloadData()])
+  } catch (error) {
+    pushError(extractApiError(error, t("arena.loginHint")))
+  }
 }
 
 const decreaseAmount = () => {
@@ -187,6 +187,7 @@ const increaseAmount = () => {
 
 const resetVersusState = () => {
   myChoice.value = null
+  revealedOwnerChoice.value = null
   matchResult.value = null
   isResolving.value = false
   if (resolveTimer.value) {
@@ -201,69 +202,74 @@ const closeVersusModal = () => {
   resetVersusState()
 }
 
-const decideMatchResult = (mine: ArenaChoice, owner: ArenaChoice): MatchResult => {
-  if (mine === owner) return "draw"
-  if (
-    (mine === "rock" && owner === "scissor") ||
-    (mine === "paper" && owner === "rock") ||
-    (mine === "scissor" && owner === "paper")
-  ) {
-    return "win"
-  }
-  return "lose"
-}
-
-const playChoice = (selectedChoice: ArenaChoice) => {
-  if (!activeRoom.value || isResolving.value) return
-  if (!currentUser.value) return
-  myChoice.value = selectedChoice
-  matchResult.value = null
-  isResolving.value = true
-  if (resolveTimer.value) clearTimeout(resolveTimer.value)
-  resolveTimer.value = setTimeout(() => {
-    if (!activeRoom.value || !myChoice.value || !currentUser.value) return
-    const resolved = decideMatchResult(myChoice.value, activeRoom.value.ownerChoice)
-    matchResult.value = resolved
-    const winnerUserId =
-      resolved === "draw"
-        ? undefined
-        : resolved === "win"
-          ? currentUser.value.id
-          : activeRoom.value.ownerId
-    matches.value.unshift({
-      id: `m${matches.value.length + 1}`,
-      roomId: activeRoom.value.id,
-      ownerId: activeRoom.value.ownerId,
-      challengerId: currentUser.value.id,
-      amount: activeRoom.value.amount,
-      ownerChoice: activeRoom.value.ownerChoice,
-      challengerChoice: myChoice.value,
-      result: resolved,
-      winnerUserId,
-      resolvedAt: nowUnix()
-    })
-    if (matches.value.length > 50) matches.value.length = 50
-    isResolving.value = false
-  }, 850)
-}
-
 const joinRoom = (room: ArenaRoom) => {
   if (!currentUser.value) {
-    message.value = t("arena.loginHint")
+    pushError(t("arena.loginHint"))
     return
   }
   if (room.ownerId === currentUser.value.id) {
-    message.value = t("msg.receiverSelf")
+    pushError(t("msg.receiverSelf"))
     return
   }
-  message.value = ""
+
   activeRoom.value = room
   resetVersusState()
   showVersusModal.value = true
 }
 
+const playChoice = async (selectedChoice: ArenaChoice) => {
+  if (!activeRoom.value || isResolving.value || !currentUser.value) return
+
+  myChoice.value = selectedChoice
+  matchResult.value = null
+  revealedOwnerChoice.value = null
+  isResolving.value = true
+
+  try {
+    const response = await apiFetch<{ ok?: boolean; match: Record<string, any> }>(
+      `arena/rooms/${activeRoom.value.id}/join`,
+      {
+        method: "POST",
+        headers: authHeaders.value,
+        body: {
+          choice: selectedChoice
+        }
+      }
+    )
+
+    const resolved = mapMatch(response.match || {})
+    if (resolveTimer.value) clearTimeout(resolveTimer.value)
+    resolveTimer.value = setTimeout(async () => {
+      revealedOwnerChoice.value = resolved.ownerChoice
+      matchResult.value = !resolved.winnerUserId
+        ? "draw"
+        : resolved.winnerUserId === currentUser.value?.id
+          ? "win"
+          : "lose"
+      isResolving.value = false
+
+      await Promise.all([refreshRooms(), refreshMatches(), reloadData()])
+    }, 850)
+  } catch (error) {
+    isResolving.value = false
+    pushError(extractApiError(error, t("arena.loginHint")))
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([refreshRooms(), refreshMatches()])
+  roomsInterval.value = setInterval(() => {
+    void refreshRooms()
+  }, 10000)
+})
+
+watch(authToken, async () => {
+  await Promise.all([refreshRooms(), refreshMatches()])
+})
+
 onBeforeUnmount(() => {
   if (resolveTimer.value) clearTimeout(resolveTimer.value)
+  if (roomsInterval.value) clearInterval(roomsInterval.value)
 })
 </script>
 
@@ -273,6 +279,9 @@ onBeforeUnmount(() => {
       <div class="row">
         <span class="pill">{{ openRooms.length }} {{ t("common.events") }}</span>
         <div class="arena-head__actions">
+          <button class="btn" type="button" :disabled="loadingRooms" @click="refreshRoomList">
+            Refresh Rooms
+          </button>
           <button class="btn" type="button" @click="showHistoryModal = true">
             {{ t("arena.history") }}
           </button>
@@ -281,7 +290,6 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </div>
-      <p v-if="message" class="muted">{{ message }}</p>
     </header>
 
     <div v-if="openRooms.length" class="arena-rooms__grid">
@@ -290,7 +298,7 @@ onBeforeUnmount(() => {
         <div class="arena-room-card__meta">
           <p>
             <span class="muted">{{ t("arena.owner") }}: </span>
-            <strong>{{ playerById(room.ownerId)?.displayName }}</strong>
+            <strong>{{ playerName(room.ownerId, room.ownerDisplayName) }}</strong>
           </p>
           <p class="value--coin">
             {{ t("arena.stake") }}: {{ room.amount }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
@@ -300,7 +308,7 @@ onBeforeUnmount(() => {
         <button class="btn" type="button" @click="joinRoom(room)">{{ t("arena.joinPlay") }}</button>
       </article>
     </div>
-    <p v-else class="muted">{{ t("arena.noRooms") }}</p>
+    <p v-else class="muted">{{ loadingRooms ? "Loading..." : t("arena.noRooms") }}</p>
 
     <div v-if="showCreateModal" class="modal" @click.self="showCreateModal = false">
       <div class="modal__panel">
@@ -388,7 +396,7 @@ onBeforeUnmount(() => {
                 class="arena-vs__card-btn arena-vs__card-btn--opponent"
                 :class="{
                   'is-hidden': !matchResult,
-                  'is-active': matchResult && activeRoom.ownerChoice === item.value
+                  'is-active': matchResult && revealedOwnerChoice === item.value
                 }"
               >
                 <img :src="item.image" :alt="item.label" class="arena-choice-card" />
@@ -422,9 +430,9 @@ onBeforeUnmount(() => {
             class="arena-history__item"
           >
             <p class="arena-history__route">
-              <strong>{{ playerById(match.ownerId)?.displayName }}</strong>
+              <strong>{{ playerName(match.ownerId) }}</strong>
               <span class="muted"> -&gt; </span>
-              <strong>{{ playerById(match.challengerId)?.displayName }}</strong>
+              <strong>{{ playerName(match.challengerId) }}</strong>
             </p>
             <p class="arena-history__meta muted">
               #{{ match.roomId }} · {{ t("arena.stake") }} {{ match.amount }}
@@ -439,13 +447,13 @@ onBeforeUnmount(() => {
                   'is-draw': !match.winnerUserId
                 }"
               >
-                {{ match.winnerUserId ? `${t("arena.winner")}: ${playerById(match.winnerUserId)?.displayName}` : t("arena.resultDraw") }}
+                {{ match.winnerUserId ? `${t("arena.winner")}: ${playerName(match.winnerUserId)}` : t("arena.resultDraw") }}
               </span>
               <span class="muted">{{ formatTime(match.resolvedAt) }}</span>
             </p>
           </article>
         </div>
-        <p v-else class="muted">{{ t("arena.noHistory") }}</p>
+        <p v-else class="muted">{{ loadingMatches ? "Loading..." : t("arena.noHistory") }}</p>
 
         <div class="row arena-vs__actions">
           <button class="btn" type="button" @click="showHistoryModal = false">{{ t("sidebar.close") }}</button>

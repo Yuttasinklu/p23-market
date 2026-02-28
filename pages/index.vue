@@ -1,23 +1,18 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import { useMMarket } from "~/composables/useMMarket";
 import { useLocale } from "~/composables/useLocale";
 
 const {
   currentUser,
-  leaderboard,
-  recentTransactions,
-  totalCoin,
+  dashboardRecentTransactions,
+  dashboardTotalCoin,
+  dashboardTopWinner,
+  dashboardTopLoser,
   txLabel,
   formatTime,
   playerById,
 } = useMMarket();
 const { t } = useLocale();
-
-const topWinner = computed(() => leaderboard.value[0] || null);
-const topLoser = computed(
-  () => leaderboard.value[leaderboard.value.length - 1] || null,
-);
 </script>
 
 <template>
@@ -48,18 +43,18 @@ const topLoser = computed(
           <div class="dashboard-hero__market-total">
             <span class="dashboard-hero__market-label">{{ t("dashboard.totalCoin") }}</span>
             <strong class="value value--coin">
-              {{ totalCoin }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
+              {{ dashboardTotalCoin }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
             </strong>
           </div>
         </div>
         <div class="dashboard-hero__quick">
           <article class="dashboard-hero__quick-card">
             <span class="dashboard-hero__quick-label">{{ t("dashboard.topWinner") }}</span>
-            <strong>{{ topWinner?.displayName || "-" }}</strong>
+            <strong>{{ dashboardTopWinner?.displayName || "-" }}</strong>
           </article>
           <article class="dashboard-hero__quick-card">
             <span class="dashboard-hero__quick-label">{{ t("dashboard.topLoser") }}</span>
-            <strong>{{ topLoser?.displayName || "-" }}</strong>
+            <strong>{{ dashboardTopLoser?.displayName || "-" }}</strong>
           </article>
         </div>
       </div>
@@ -68,16 +63,16 @@ const topLoser = computed(
     <section class="card dashboard-vs-stats">
       <article class="dashboard-vs-stats__side is-winner">
         <p class="dashboard-vs-stats__label">{{ t("dashboard.topWinner") }}</p>
-        <p class="value">{{ topWinner?.displayName || "-" }}</p>
+        <p class="value">{{ dashboardTopWinner?.displayName || "-" }}</p>
         <p class="dashboard-vs-stats__meta">
-          {{ t("common.net") }} {{ topWinner?.netWorth || 0 }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.mvp") }}
+          {{ t("common.net") }} {{ dashboardTopWinner?.netWorth || 0 }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.mvp") }}
         </p>
       </article>
       <article class="dashboard-vs-stats__side is-loser">
         <p class="dashboard-vs-stats__label">{{ t("dashboard.topLoser") }}</p>
-        <p class="value">{{ topLoser?.displayName || "-" }}</p>
+        <p class="value">{{ dashboardTopLoser?.displayName || "-" }}</p>
         <p class="dashboard-vs-stats__meta">
-          {{ t("common.net") }} {{ topLoser?.netWorth || 0 }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.comeback") }}
+          {{ t("common.net") }} {{ dashboardTopLoser?.netWorth || 0 }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.comeback") }}
         </p>
       </article>
     </section>
@@ -85,11 +80,11 @@ const topLoser = computed(
     <section class="card dashboard-feed">
       <div class="row">
         <h2>{{ t("dashboard.matchFeed") }}</h2>
-        <span class="pill">{{ recentTransactions.length }} {{ t("common.events") }}</span>
+        <span class="pill">{{ dashboardRecentTransactions.length }} {{ t("common.events") }}</span>
       </div>
       <div class="list dashboard-feed__list">
         <article
-          v-for="tx in recentTransactions.slice(0, 5)"
+          v-for="tx in dashboardRecentTransactions"
           :key="tx.id"
           class="dashboard-feed__item"
         >

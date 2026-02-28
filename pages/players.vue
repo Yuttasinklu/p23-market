@@ -3,14 +3,10 @@ import { computed } from "vue"
 import { useMMarket } from "~/composables/useMMarket"
 import { useLocale } from "~/composables/useLocale"
 
-const { allPlayers } = useMMarket()
+const { leaderboard, refreshLeaderboardOnly } = useMMarket()
 const { t } = useLocale()
 
-const rankedPlayers = computed(() =>
-  [...allPlayers.value]
-    .filter((player) => player.role === "player")
-    .sort((a, b) => (b.coin - a.coin) || (a.bankDebt - b.bankDebt))
-)
+const rankedPlayers = computed(() => [...leaderboard.value])
 
 const topThree = computed(() => rankedPlayers.value.slice(0, 3))
 const remainingPlayers = computed(() => rankedPlayers.value.slice(3))
@@ -28,15 +24,21 @@ const podium = computed(() => {
 const avatarPath = (index: number) => `/images/avatars/${index}.png`
 
 const leaderboardScore = (coin: number) => coin
+const refreshLeaderboard = async () => {
+  await refreshLeaderboardOnly()
+}
 
 </script>
 
 <template>
   <div class="leaderboard-page">
-    <h1 class="title leaderboard-title">
-      <span class="leaderboard-title__icon" aria-hidden="true">🏆</span>
-      {{ t("players.leaderboard") }}
-    </h1>
+    <div class="row">
+      <h1 class="title leaderboard-title">
+        <span class="leaderboard-title__icon" aria-hidden="true">🏆</span>
+        {{ t("players.leaderboard") }}
+      </h1>
+      <button type="button" class="btn" @click="refreshLeaderboard">Refresh</button>
+    </div>
 
     <section class="leaderboard-podium">
       <article

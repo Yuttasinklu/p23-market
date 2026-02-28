@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { computed } from "vue"
 import { useMMarket } from "~/composables/useMMarket"
 import { useLocale } from "~/composables/useLocale"
+import { useToast } from "~/composables/useToast"
 
-const { currentUser, runSettlement, settlementRuns, playerById, formatTime } = useMMarket()
+const { currentUser, runSettlement, settlementRuns, playerById, formatTime, isAuthenticated } = useMMarket()
 const { t } = useLocale()
-const message = ref('')
+const { pushError, pushSuccess } = useToast()
 
 const latestRun = computed(() => settlementRuns.value[0] || null)
 
@@ -58,14 +59,28 @@ const payoutInstructions = computed(() => {
   return instructions
 })
 
-const handleRun = () => {
-  const result = runSettlement()
-  message.value = result.message
+const handleRun = async () => {
+  if (!isAuthenticated.value) {
+    pushError(t("common.loginRequiredView"))
+    return
+  }
+  const result = await runSettlement()
+  if (!result.ok) {
+    pushError(result.message)
+    return
+  }
+  pushSuccess(result.message)
 }
 </script>
 
 <template>
   <div class="settlement-page">
+    <section v-if="!isAuthenticated" class="card settlement-control">
+      <h1 class="title">{{ t("settlement.title") }}</h1>
+      <p class="muted">{{ t("common.loginRequiredView") }}</p>
+    </section>
+
+    <template v-else>
     <section class="card settlement-control">
       <div class="row">
         <h1 class="title">{{ t("settlement.title") }}</h1>
@@ -81,7 +96,6 @@ const handleRun = () => {
         >
           {{ t("settlement.run") }}
         </button>
-        <p class="muted settlement-message">{{ message }}</p>
       </div>
     </section>
 
@@ -168,5 +182,6 @@ const handleRun = () => {
       </div>
       <p v-else class="muted">{{ t("settlement.none") }}</p>
     </section>
+    </template>
   </div>
 </template>

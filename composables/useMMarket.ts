@@ -1,6 +1,7 @@
 import { useState } from "#app";
 import { computed } from "vue";
 import { useLocale } from "~/composables/useLocale";
+import { useApi } from "~/composables/useApi";
 
 type Role = "admin" | "player";
 type TxType = "transfer" | "borrow" | "repay";
@@ -38,302 +39,360 @@ export interface SettlementRun {
   }>;
 }
 
+interface ApiPlayer {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarIndex?: number;
+  role: Role | string;
+  coin: number;
+  bankDebt: number;
+}
+
+interface ApiLeaderboardItem {
+  rank?: number;
+  playerId?: string;
+  id?: string;
+  displayName: string;
+  coin: number;
+  bankDebt: number;
+  net?: number;
+}
+
+interface LeaderboardEntry {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarIndex: number;
+  coin: number;
+  bankDebt: number;
+  netWorth: number;
+}
+
+interface ApiLoginResponse {
+  token: string;
+  user: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarIndex?: number;
+    role: Role;
+  };
+}
+
+interface ApiTransactionResponse {
+  items: LedgerTx[];
+}
+
+interface ApiSettlementRunsResponse {
+  items: SettlementRun[];
+}
+
+interface ApiLeaderboardResponse {
+  items: ApiLeaderboardItem[];
+}
+
+interface ApiDashboardSummary {
+  totals?: {
+    totalCoin?: number;
+    totalDebt?: number;
+  };
+  topWinner?: {
+    playerId?: string;
+    displayName?: string;
+    net?: number;
+  };
+  topLoser?: {
+    playerId?: string;
+    displayName?: string;
+    net?: number;
+  };
+  recentTransactions?: LedgerTx[];
+}
+
 const EXCHANGE_RATE = 10;
-const nowUnix = () => Math.floor(Date.now() / 1000);
+const SESSION_STORAGE_KEY = "p23-market-session";
+
+const normalizeRole = (role?: string): Role => {
+  if (!role) return "player";
+  const value = role.toLowerCase();
+  return value === "admin" ? "admin" : "player";
+};
+
+const mapPlayer = (player: ApiPlayer): Player => ({
+  id: player.id,
+  username: player.username,
+  password: "",
+  displayName: player.displayName,
+  avatarIndex: Number.isInteger(player.avatarIndex) ? Number(player.avatarIndex) : 0,
+  role: normalizeRole(player.role),
+  coin: Number(player.coin || 0),
+  bankDebt: Number(player.bankDebt || 0)
+});
+
+const extractErrorMessage = (error: unknown, fallback: string) => {
+  const maybe = error as { data?: { error?: { message?: string } }; message?: string };
+  return maybe?.data?.error?.message || maybe?.message || fallback;
+};
 
 export const useMMarket = () => {
   const { t } = useLocale();
-  const players = useState<Player[]>("players", () => [
-    {
-      id: "u1",
-      username: "banker",
-      password: "1234",
-      displayName: "P23 Market Admin",
-      avatarIndex: 0,
-      role: "admin",
-      coin: 0,
-      bankDebt: 0,
-    },
-    {
-      id: "u2",
-      username: "player1",
-      password: "1234",
-      displayName: "Player 1",
-      avatarIndex: 1,
-      role: "player",
-      coin: 120,
-      bankDebt: 20,
-    },
-    {
-      id: "u3",
-      username: "player3",
-      password: "1234",
-      displayName: "Player 3",
-      avatarIndex: 2,
-      role: "player",
-      coin: 80,
-      bankDebt: 40,
-    },
-    {
-      id: "u4",
-      username: "player4",
-      password: "1234",
-      displayName: "Player 4",
-      avatarIndex: 3,
-      role: "player",
-      coin: 150,
-      bankDebt: 10,
-    },
-    {
-      id: "u5",
-      username: "player5",
-      password: "1234",
-      displayName: "Player 5",
-      avatarIndex: 4,
-      role: "player",
-      coin: 95,
-      bankDebt: 55,
-    },
-    {
-      id: "u6",
-      username: "player6",
-      password: "1234",
-      displayName: "Player 6",
-      avatarIndex: 5,
-      role: "player",
-      coin: 132,
-      bankDebt: 24,
-    },
-    {
-      id: "u7",
-      username: "player7",
-      password: "1234",
-      displayName: "Player 7",
-      avatarIndex: 6,
-      role: "player",
-      coin: 76,
-      bankDebt: 15,
-    },
-    {
-      id: "u8",
-      username: "player8",
-      password: "1234",
-      displayName: "Player 8",
-      avatarIndex: 7,
-      role: "player",
-      coin: 168,
-      bankDebt: 90,
-    },
-    {
-      id: "u9",
-      username: "player9",
-      password: "1234",
-      displayName: "Player 9",
-      avatarIndex: 8,
-      role: "player",
-      coin: 54,
-      bankDebt: 30,
-    },
-    {
-      id: "u10",
-      username: "player10",
-      password: "1234",
-      displayName: "Player 10",
-      avatarIndex: 9,
-      role: "player",
-      coin: 188,
-      bankDebt: 42,
-    },
-    {
-      id: "u11",
-      username: "player11",
-      password: "1234",
-      displayName: "Player 11",
-      avatarIndex: 10,
-      role: "player",
-      coin: 118,
-      bankDebt: 76,
-    },
-    {
-      id: "u12",
-      username: "player12",
-      password: "1234",
-      displayName: "Player 12",
-      avatarIndex: 11,
-      role: "player",
-      coin: 143,
-      bankDebt: 36,
-    },
-  ]);
+  const { apiFetch } = useApi();
 
-  const transactions = useState<LedgerTx[]>("transactions", () => [
-    {
-      id: "tx1",
-      type: "transfer",
-      fromUserId: "u2",
-      toUserId: "u3",
-      amount: 50,
-      note: "table A",
-      createdAt: nowUnix() - 60 * 90,
-    },
-    {
-      id: "tx2",
-      type: "transfer",
-      fromUserId: "u3",
-      toUserId: "u4",
-      amount: 50,
-      note: "table B",
-      createdAt: nowUnix() - 60 * 45,
-    },
-    {
-      id: "tx3",
-      type: "borrow",
-      toUserId: "u5",
-      amount: 20,
-      note: "top up",
-      createdAt: nowUnix() - 60 * 40,
-    },
-    {
-      id: "tx4",
-      type: "transfer",
-      fromUserId: "u10",
-      toUserId: "u8",
-      amount: 35,
-      note: "joker round",
-      createdAt: nowUnix() - 60 * 37,
-    },
-    {
-      id: "tx5",
-      type: "transfer",
-      fromUserId: "u6",
-      toUserId: "u11",
-      amount: 25,
-      note: "lunch bet",
-      createdAt: nowUnix() - 60 * 33,
-    },
-    {
-      id: "tx6",
-      type: "repay",
-      fromUserId: "u3",
-      amount: 10,
-      note: "partial repay",
-      createdAt: nowUnix() - 60 * 31,
-    },
-    {
-      id: "tx7",
-      type: "transfer",
-      fromUserId: "u8",
-      toUserId: "u12",
-      amount: 40,
-      note: "speed match",
-      createdAt: nowUnix() - 60 * 28,
-    },
-    {
-      id: "tx8",
-      type: "transfer",
-      fromUserId: "u4",
-      toUserId: "u2",
-      amount: 15,
-      note: "comeback",
-      createdAt: nowUnix() - 60 * 24,
-    },
-    {
-      id: "tx9",
-      type: "borrow",
-      toUserId: "u9",
-      amount: 30,
-      note: "late session",
-      createdAt: nowUnix() - 60 * 21,
-    },
-    {
-      id: "tx10",
-      type: "transfer",
-      fromUserId: "u11",
-      toUserId: "u7",
-      amount: 18,
-      note: "double or nothing",
-      createdAt: nowUnix() - 60 * 18,
-    },
-    {
-      id: "tx11",
-      type: "transfer",
-      fromUserId: "u12",
-      toUserId: "u10",
-      amount: 60,
-      note: "boss round",
-      createdAt: nowUnix() - 60 * 15,
-    },
-    {
-      id: "tx12",
-      type: "repay",
-      fromUserId: "u5",
-      amount: 12,
-      note: "repay",
-      createdAt: nowUnix() - 60 * 11,
-    },
-    {
-      id: "tx13",
-      type: "transfer",
-      fromUserId: "u7",
-      toUserId: "u6",
-      amount: 22,
-      note: "counter hit",
-      createdAt: nowUnix() - 60 * 9,
-    },
-    {
-      id: "tx14",
-      type: "transfer",
-      fromUserId: "u2",
-      toUserId: "u4",
-      amount: 27,
-      note: "last combo",
-      createdAt: nowUnix() - 60 * 6,
-    },
-    {
-      id: "tx15",
-      type: "transfer",
-      fromUserId: "u3",
-      toUserId: "u8",
-      amount: 14,
-      note: "final hand",
-      createdAt: nowUnix() - 60 * 3,
-    },
-  ]);
-
+  const players = useState<Player[]>("players", () => []);
+  const transactions = useState<LedgerTx[]>("transactions", () => []);
+  const leaderboardRows = useState<ApiLeaderboardItem[]>("leaderboardRows", () => []);
+  const dashboardSummary = useState<ApiDashboardSummary | null>("dashboardSummary", () => null);
   const settlementRuns = useState<SettlementRun[]>("settlementRuns", () => []);
   const currentUserId = useState<string | null>("currentUserId", () => null);
+  const authToken = useState<string | null>("authToken", () => null);
+  const initialized = useState<boolean>("mmarketInitialized", () => false);
+  const initializing = useState<boolean>("mmarketInitializing", () => false);
+  const sessionLoaded = useState<boolean>("mmarketSessionLoaded", () => false);
+
+  const authHeaders = () => (authToken.value ? { Authorization: `Bearer ${authToken.value}` } : {});
+
+  const saveSession = () => {
+    if (!process.client) return;
+    if (!authToken.value || !currentUserId.value) {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({
+        token: authToken.value,
+        userId: currentUserId.value
+      })
+    );
+  };
+
+  const loadSession = () => {
+    if (!process.client || sessionLoaded.value) return;
+    sessionLoaded.value = true;
+
+    try {
+      const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as { token?: string; userId?: string };
+      if (typeof parsed?.token === "string" && typeof parsed?.userId === "string") {
+        authToken.value = parsed.token;
+        currentUserId.value = parsed.userId;
+      }
+    } catch {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    }
+  };
+
+  const refreshPlayers = async () => {
+    try {
+      const response = await apiFetch<{ items: ApiPlayer[] }>("players", {
+        method: "GET",
+        headers: authHeaders()
+      });
+      players.value = Array.isArray(response.items) ? response.items.map(mapPlayer) : [];
+    } catch {
+      players.value = [];
+    }
+  };
+
+  const refreshTransactions = async () => {
+    if (!authToken.value) {
+      transactions.value = [];
+      return;
+    }
+    try {
+      const response = await apiFetch<ApiTransactionResponse>("transactions?limit=100", {
+        method: "GET",
+        headers: authHeaders()
+      });
+      transactions.value = Array.isArray(response.items)
+        ? [...response.items].sort((a, b) => b.createdAt - a.createdAt)
+        : [];
+    } catch {
+      transactions.value = [];
+    }
+  };
+
+  const refreshLeaderboard = async () => {
+    try {
+      const response = await apiFetch<ApiLeaderboardResponse>("leaderboard", {
+        method: "GET",
+        headers: authHeaders()
+      });
+      leaderboardRows.value = Array.isArray(response.items) ? response.items : [];
+    } catch {
+      leaderboardRows.value = [];
+    }
+  };
+
+  const refreshCurrentUserOnly = async () => {
+    if (!currentUserId.value) return;
+    try {
+      const raw = await apiFetch<any>(`players/${currentUserId.value}`, {
+        method: "GET",
+        headers: authHeaders()
+      });
+      const payload = raw?.id ? raw : raw?.item || raw?.user;
+      if (!payload?.id) return;
+      const mapped = mapPlayer(payload as ApiPlayer);
+      const index = players.value.findIndex((item) => item.id === mapped.id);
+      if (index >= 0) {
+        players.value[index] = mapped;
+      } else {
+        players.value.unshift(mapped);
+      }
+    } catch {
+      // Keep current UI state if refresh fails.
+    }
+  };
+
+  const refreshDashboard = async () => {
+    try {
+      const response = await apiFetch<ApiDashboardSummary>("dashboard", {
+        method: "GET",
+        headers: authHeaders()
+      });
+      dashboardSummary.value = response || null;
+    } catch {
+      dashboardSummary.value = null;
+    }
+  };
+
+  const refreshSettlementRuns = async () => {
+    if (!authToken.value) {
+      settlementRuns.value = [];
+      return;
+    }
+    try {
+      const response = await apiFetch<ApiSettlementRunsResponse>("settlement/runs", {
+        method: "GET",
+        headers: authHeaders()
+      });
+      settlementRuns.value = Array.isArray(response.items)
+        ? [...response.items].sort((a, b) => b.createdAt - a.createdAt)
+        : [];
+    } catch {
+      settlementRuns.value = [];
+    }
+  };
+
+  const initializeData = async () => {
+    if (initialized.value || initializing.value) return;
+    initializing.value = true;
+
+    try {
+      await Promise.allSettled([
+        refreshPlayers(),
+        refreshLeaderboard(),
+        refreshDashboard(),
+        refreshTransactions(),
+        refreshSettlementRuns()
+      ]);
+      initialized.value = true;
+
+      if (currentUserId.value && !players.value.some((player) => player.id === currentUserId.value)) {
+        currentUserId.value = null;
+        authToken.value = null;
+        saveSession();
+      }
+    } catch {
+      initialized.value = true;
+    } finally {
+      initializing.value = false;
+    }
+  };
+
+  if (process.client && !initialized.value && !initializing.value) {
+    loadSession();
+    void initializeData();
+  }
 
   const currentUser = computed(
-    () =>
-      players.value.find((player) => player.id === currentUserId.value) || null,
+    () => players.value.find((player) => player.id === currentUserId.value) || null
   );
+  const isAuthenticated = computed(() => Boolean(authToken.value));
 
   const allPlayers = computed(() => players.value);
 
   const leaderboard = computed(() =>
-    [...players.value]
-      .filter((player) => player.role === "player")
-      .map((player) => ({
-        ...player,
-        netWorth: player.coin - player.bankDebt,
-      }))
-      .sort((a, b) => b.netWorth - a.netWorth),
+    leaderboardRows.value.length
+      ? leaderboardRows.value
+          .map((row): LeaderboardEntry => {
+            const id = row.playerId || row.id || "";
+            const player = players.value.find((item) => item.id === id);
+            return {
+              id,
+              username: player?.username || "",
+              displayName: row.displayName || player?.displayName || "-",
+              avatarIndex: Number.isInteger(player?.avatarIndex) ? Number(player?.avatarIndex) : 0,
+              coin: Number(row.coin || 0),
+              bankDebt: Number(row.bankDebt || 0),
+              netWorth: Number(row.net ?? Number(row.coin || 0) - Number(row.bankDebt || 0))
+            };
+          })
+          .sort((a, b) => b.netWorth - a.netWorth)
+      : [...players.value]
+          .filter((player) => player.role === "player")
+          .map((player) => ({
+            ...player,
+            netWorth: player.coin - player.bankDebt
+          }))
+          .sort((a, b) => b.netWorth - a.netWorth)
   );
 
   const recentTransactions = computed(() =>
-    [...transactions.value].sort((a, b) => b.createdAt - a.createdAt),
+    [...transactions.value].sort((a, b) => b.createdAt - a.createdAt)
   );
 
   const totalCoin = computed(() =>
     players.value
       .filter((player) => player.role === "player")
-      .reduce((sum, player) => sum + player.coin, 0),
+      .reduce((sum, player) => sum + player.coin, 0)
   );
+
   const totalDebt = computed(() =>
     players.value
       .filter((player) => player.role === "player")
-      .reduce((sum, player) => sum + player.bankDebt, 0),
+      .reduce((sum, player) => sum + player.bankDebt, 0)
   );
+
+  const dashboardTotalCoin = computed(() =>
+    Number(dashboardSummary.value?.totals?.totalCoin ?? totalCoin.value)
+  );
+
+  const dashboardTopWinner = computed(() => {
+    const api = dashboardSummary.value?.topWinner;
+    if (api?.displayName) {
+      return {
+        id: api.playerId || "",
+        displayName: api.displayName,
+        netWorth: Number(api.net || 0)
+      };
+    }
+    return leaderboard.value[0] || null;
+  });
+
+  const dashboardTopLoser = computed(() => {
+    const api = dashboardSummary.value?.topLoser;
+    if (api?.displayName) {
+      return {
+        id: api.playerId || "",
+        displayName: api.displayName,
+        netWorth: Number(api.net || 0)
+      };
+    }
+    return leaderboard.value[leaderboard.value.length - 1] || null;
+  });
+
+  const dashboardRecentTransactions = computed(() => {
+    const apiItems = dashboardSummary.value?.recentTransactions;
+    if (Array.isArray(apiItems) && apiItems.length) {
+      return [...apiItems].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+    }
+    return recentTransactions.value.slice(0, 5);
+  });
 
   const txLabel = (tx: LedgerTx) => {
     if (tx.type === "transfer") return t("tx.transfer");
@@ -346,54 +405,99 @@ export const useMMarket = () => {
       day: "2-digit",
       month: "short",
       hour: "2-digit",
-      minute: "2-digit",
+      minute: "2-digit"
     });
 
   const playerById = (id?: string) =>
     players.value.find((player) => player.id === id);
 
-  const login = (username: string, password: string) => {
-    const found = players.value.find(
-      (player) => player.username.toLowerCase() === username.toLowerCase(),
-    );
-    if (!found) return { ok: false, message: t("msg.userNotFound") };
-    if (!password.trim()) return { ok: false, message: t("msg.passwordRequired") };
-    if (found.password !== password)
-      return { ok: false, message: t("msg.invalidPassword") };
-    currentUserId.value = found.id;
-    return { ok: true, message: "" };
+  const login = async (username: string, password: string) => {
+    try {
+      const response = await apiFetch<ApiLoginResponse>("auth/login", {
+        method: "POST",
+        body: {
+          username: username.trim(),
+          password: password.trim()
+        }
+      });
+
+      authToken.value = response.token;
+      currentUserId.value = response.user.id;
+      saveSession();
+      await Promise.all([refreshPlayers(), refreshLeaderboard(), refreshDashboard(), refreshTransactions(), refreshSettlementRuns()]);
+      if (!players.value.some((player) => player.id === response.user.id)) {
+        players.value.unshift({
+          id: response.user.id,
+          username: response.user.username,
+          password: "",
+          displayName: response.user.displayName,
+          avatarIndex: Number.isInteger(response.user.avatarIndex) ? Number(response.user.avatarIndex) : 0,
+          role: normalizeRole(response.user.role),
+          coin: 0,
+          bankDebt: 0
+        });
+      }
+
+      return { ok: true, message: "" };
+    } catch (error) {
+      return { ok: false, message: extractErrorMessage(error, t("msg.invalidPassword")) };
+    }
   };
 
-  const register = (displayName: string, username: string, password: string, avatarIndex: number) => {
-    if (!displayName.trim() || !username.trim())
-      return { ok: false, message: t("msg.nameUsernameRequired") };
-    if (!password.trim()) return { ok: false, message: t("msg.passwordRequired") };
-    const usernameExists = players.value.some(
-      (player) => player.username.toLowerCase() === username.toLowerCase(),
-    );
-    if (usernameExists)
-      return { ok: false, message: t("msg.usernameExists") };
+  const register = async (displayName: string, username: string, password: string, avatarIndex: number) => {
+    try {
+      const response = await apiFetch<ApiLoginResponse>("auth/register", {
+        method: "POST",
+        body: {
+          displayName: displayName.trim(),
+          username: username.trim(),
+          password: password.trim(),
+          avatarIndex
+        }
+      });
 
-    const user: Player = {
-      id: `u${players.value.length + 1}`,
-      username: username.trim(),
-      password: password.trim(),
-      displayName: displayName.trim(),
-      avatarIndex: Number.isInteger(avatarIndex) ? Math.max(0, Math.min(24, avatarIndex)) : 0,
-      role: "player",
-      coin: 0,
-      bankDebt: 0,
-    };
-    players.value.push(user);
-    currentUserId.value = user.id;
-    return { ok: true, message: t("msg.created", { name: user.displayName }) };
+      authToken.value = response.token;
+      currentUserId.value = response.user.id;
+      saveSession();
+      await Promise.all([refreshPlayers(), refreshLeaderboard(), refreshDashboard(), refreshTransactions(), refreshSettlementRuns()]);
+      if (!players.value.some((player) => player.id === response.user.id)) {
+        players.value.unshift({
+          id: response.user.id,
+          username: response.user.username,
+          password: "",
+          displayName: response.user.displayName,
+          avatarIndex: Number.isInteger(response.user.avatarIndex) ? Number(response.user.avatarIndex) : 0,
+          role: normalizeRole(response.user.role),
+          coin: 0,
+          bankDebt: 0
+        });
+      }
+
+      return { ok: true, message: t("msg.created", { name: response.user.displayName }) };
+    } catch (error) {
+      return { ok: false, message: extractErrorMessage(error, t("msg.usernameExists")) };
+    }
   };
 
-  const logout = () => {
-    currentUserId.value = null;
+  const logout = async () => {
+    try {
+      if (authToken.value) {
+        await apiFetch<{ ok: boolean }>("auth/logout", {
+          method: "POST",
+          headers: authHeaders(),
+          body: {}
+        });
+      }
+    } catch {
+      // Ignore logout API failure and clear local session anyway.
+    } finally {
+      currentUserId.value = null;
+      authToken.value = null;
+      saveSession();
+    }
   };
 
-  const addTransfer = (toUserId: string, amount: number, note: string) => {
+  const addTransfer = async (toUserId: string, amount: number, note: string) => {
     if (!currentUser.value)
       return { ok: false, message: t("msg.loginFirst") };
     if (currentUser.value.id === toUserId)
@@ -401,101 +505,104 @@ export const useMMarket = () => {
     if (!Number.isFinite(amount) || amount <= 0)
       return { ok: false, message: t("msg.amountGtZero") };
 
-    const fromPlayer = playerById(currentUser.value.id);
-    const toPlayer = playerById(toUserId);
-    if (!fromPlayer || !toPlayer)
-      return { ok: false, message: t("msg.playerNotFound") };
+    try {
+      await apiFetch("transfers", {
+        method: "POST",
+        headers: authHeaders(),
+        body: {
+          receiverId: toUserId,
+          amount,
+          note: note.trim()
+        }
+      });
 
-    fromPlayer.coin -= amount;
-    toPlayer.coin += amount;
-
-    transactions.value.push({
-      id: `tx${transactions.value.length + 1}`,
-      type: "transfer",
-      fromUserId: fromPlayer.id,
-      toUserId,
-      amount,
-      note: note.trim() || "no note",
-      createdAt: nowUnix(),
-    });
-
-    return { ok: true, message: t("msg.transferCompleted") };
+      await Promise.all([refreshPlayers(), refreshLeaderboard(), refreshDashboard(), refreshTransactions()]);
+      return { ok: true, message: t("msg.transferCompleted") };
+    } catch (error) {
+      return { ok: false, message: extractErrorMessage(error, t("msg.playerNotFound")) };
+    }
   };
 
-  const borrowFromBank = (amount: number, note: string) => {
+  const borrowFromBank = async (amount: number, note: string) => {
     if (!currentUser.value)
       return { ok: false, message: t("msg.loginFirst") };
     if (!Number.isFinite(amount) || amount <= 0)
       return { ok: false, message: t("msg.amountGtZero") };
 
-    const player = playerById(currentUser.value.id);
-    if (!player) return { ok: false, message: t("msg.playerNotFound") };
+    try {
+      await apiFetch("bank/borrow", {
+        method: "POST",
+        headers: authHeaders(),
+        body: {
+          amount,
+          note: note.trim()
+        }
+      });
 
-    player.coin += amount;
-    player.bankDebt += amount;
-
-    transactions.value.push({
-      id: `tx${transactions.value.length + 1}`,
-      type: "borrow",
-      toUserId: player.id,
-      amount,
-      note: note.trim() || "borrow",
-      createdAt: nowUnix(),
-    });
-
-    return { ok: true, message: t("msg.borrowCompleted") };
+      await Promise.all([refreshPlayers(), refreshLeaderboard(), refreshDashboard(), refreshTransactions()]);
+      return { ok: true, message: t("msg.borrowCompleted") };
+    } catch (error) {
+      return { ok: false, message: extractErrorMessage(error, t("msg.playerNotFound")) };
+    }
   };
 
-  const repayToBank = (amount: number, note: string) => {
+  const repayToBank = async (amount: number, note: string) => {
     if (!currentUser.value)
       return { ok: false, message: t("msg.loginFirst") };
     if (!Number.isFinite(amount) || amount <= 0)
       return { ok: false, message: t("msg.amountGtZero") };
 
-    const player = playerById(currentUser.value.id);
-    if (!player) return { ok: false, message: t("msg.playerNotFound") };
-    if (amount > player.coin) return { ok: false, message: t("msg.notEnoughCoin") };
-    if (amount > player.bankDebt)
-      return { ok: false, message: t("msg.exceedDebt") };
+    try {
+      await apiFetch("bank/repay", {
+        method: "POST",
+        headers: authHeaders(),
+        body: {
+          amount,
+          note: note.trim()
+        }
+      });
 
-    player.coin -= amount;
-    player.bankDebt -= amount;
-
-    transactions.value.push({
-      id: `tx${transactions.value.length + 1}`,
-      type: "repay",
-      fromUserId: player.id,
-      amount,
-      note: note.trim() || "repay",
-      createdAt: nowUnix(),
-    });
-
-    return { ok: true, message: t("msg.repayCompleted") };
+      await Promise.all([refreshPlayers(), refreshLeaderboard(), refreshDashboard(), refreshTransactions()]);
+      return { ok: true, message: t("msg.repayCompleted") };
+    } catch (error) {
+      return { ok: false, message: extractErrorMessage(error, t("msg.notEnoughCoin")) };
+    }
   };
 
-  const runSettlement = () => {
+  const runSettlement = async () => {
     if (!currentUser.value)
       return { ok: false, message: t("msg.loginFirst") };
     if (currentUser.value.role !== "admin")
       return { ok: false, message: t("msg.onlyAdminSettlement") };
 
-    const snapshot = players.value
-      .filter((player) => player.role === "player")
-      .map((player) => ({
-        playerId: player.id,
-        coin: player.coin,
-        bankDebt: player.bankDebt,
-        net: player.coin - player.bankDebt,
-      }));
+    try {
+      await apiFetch("settlement/run", {
+        method: "POST",
+        headers: authHeaders(),
+        body: {}
+      });
 
-    settlementRuns.value.unshift({
-      id: `set${settlementRuns.value.length + 1}`,
-      createdAt: nowUnix(),
-      runByUserId: currentUser.value.id,
-      players: snapshot,
-    });
+      await Promise.all([refreshSettlementRuns(), refreshPlayers(), refreshLeaderboard(), refreshDashboard()]);
+      return { ok: true, message: t("msg.settlementSuccess") };
+    } catch (error) {
+      return { ok: false, message: extractErrorMessage(error, t("msg.onlyAdminSettlement")) };
+    }
+  };
 
-    return { ok: true, message: t("msg.settlementSuccess") };
+  const reloadData = async () => {
+    await Promise.all([refreshPlayers(), refreshLeaderboard(), refreshDashboard(), refreshTransactions(), refreshSettlementRuns()]);
+  };
+
+  const refreshTransactionsOnly = async () => {
+    await refreshTransactions();
+  };
+
+  const refreshLeaderboardOnly = async () => {
+    await refreshLeaderboard();
+  };
+
+  const refreshDashboardOnly = async () => {
+    await refreshDashboard();
   };
 
   const thbValue = (coin: number) => coin * EXCHANGE_RATE;
@@ -503,11 +610,16 @@ export const useMMarket = () => {
   return {
     allPlayers,
     currentUser,
+    isAuthenticated,
     leaderboard,
     recentTransactions,
+    dashboardRecentTransactions,
     settlementRuns,
     totalCoin,
     totalDebt,
+    dashboardTotalCoin,
+    dashboardTopWinner,
+    dashboardTopLoser,
     txLabel,
     formatTime,
     playerById,
@@ -518,7 +630,13 @@ export const useMMarket = () => {
     borrowFromBank,
     repayToBank,
     runSettlement,
+    reloadData,
+    refreshCurrentUserOnly,
+    refreshTransactionsOnly,
+    refreshLeaderboardOnly,
+    refreshDashboardOnly,
+    initializeData,
     thbValue,
-    exchangeRate: EXCHANGE_RATE,
+    exchangeRate: EXCHANGE_RATE
   };
 };

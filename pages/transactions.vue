@@ -3,12 +3,13 @@ import { computed } from "vue"
 import { useMMarket } from "~/composables/useMMarket"
 import { useLocale } from "~/composables/useLocale"
 
-const { recentTransactions, playerById, formatTime, txLabel } = useMMarket()
+const { recentTransactions, playerById, formatTime, txLabel, refreshTransactionsOnly, isAuthenticated } = useMMarket()
 const { t } = useLocale()
 const displayTransactions = computed(() => recentTransactions.value.slice(0, 100))
 
-const refreshPage = () => {
-  if (typeof window !== "undefined") window.location.reload()
+const refreshPage = async () => {
+  if (!isAuthenticated.value) return
+  await refreshTransactionsOnly()
 }
 </script>
 
@@ -21,7 +22,11 @@ const refreshPage = () => {
       <button type="button" class="btn transactions-head__refresh" @click="refreshPage">Refresh</button>
     </div>
 
-    <div class="transactions-list">
+    <div v-if="!isAuthenticated" class="card transactions-empty">
+      <p class="muted">{{ t("common.loginRequiredView") }}</p>
+    </div>
+
+    <div v-else class="transactions-list">
       <article v-for="tx in displayTransactions" :key="tx.id" class="transactions-card">
         <div class="transactions-card__meta">
           <span class="transactions-type">{{ txLabel(tx) }}</span>

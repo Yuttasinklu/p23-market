@@ -3,9 +3,11 @@ import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useMMarket } from "~/composables/useMMarket";
 import { useLocale } from "~/composables/useLocale";
+import { useToast } from "~/composables/useToast";
 
-const { currentUser, login, register, logout } = useMMarket();
+const { currentUser, login, register, logout, refreshCurrentUserOnly } = useMMarket();
 const { locale, setLocale, t } = useLocale();
+const { toasts, pushError, removeToast } = useToast();
 
 const route = useRoute();
 const showLogin = ref(false);
@@ -17,26 +19,23 @@ const registerName = ref("");
 const registerUsername = ref("");
 const registerPassword = ref("");
 const registerAvatarIndex = ref(0);
-const authMessage = ref("");
 const avatarOptions = computed(() => Array.from({ length: 25 }, (_, index) => index));
 
 const openLogin = () => {
-  authMessage.value = "";
   showRegister.value = false;
   showLogin.value = true;
 };
 
 const openRegister = () => {
-  authMessage.value = "";
   showLogin.value = false;
   showRegister.value = true;
 };
 
 const avatarPath = (index: number) => `/images/avatars/${index}.png`;
 
-const submitLogin = () => {
-  const result = login(loginUsername.value, loginPassword.value);
-  authMessage.value = result.message;
+const submitLogin = async () => {
+  const result = await login(loginUsername.value, loginPassword.value);
+  if (!result.ok) pushError(result.message);
   if (result.ok) {
     showLogin.value = false;
     loginUsername.value = "";
@@ -44,14 +43,14 @@ const submitLogin = () => {
   }
 };
 
-const submitRegister = () => {
-  const result = register(
+const submitRegister = async () => {
+  const result = await register(
     registerName.value,
     registerUsername.value,
     registerPassword.value,
     registerAvatarIndex.value,
   );
-  authMessage.value = result.message;
+  if (!result.ok) pushError(result.message);
   if (result.ok) {
     showRegister.value = false;
     registerName.value = "";
@@ -61,13 +60,12 @@ const submitRegister = () => {
   }
 };
 
-const signOut = () => {
-  logout();
-  authMessage.value = t("auth.loggedOut");
+const signOut = async () => {
+  await logout();
 };
 
-const refreshBalance = () => {
-  if (typeof window !== "undefined") window.location.reload();
+const refreshBalance = async () => {
+  await refreshCurrentUserOnly();
 };
 
 const links = [
@@ -193,25 +191,38 @@ const desktopSecondaryLinks = links.filter(
           </header>
 
           <div class="slideover__body">
-            <section class="slideover__block">
+            <section class="slideover__block slideover__block--profile">
               <p class="slideover__label">{{ t("sidebar.profile") }}</p>
               <div v-if="currentUser" class="slideover__profile">
-                <img :src="avatarPath(currentUser.avatarIndex || 0)" alt="" class="slideover__avatar" />
-                <p class="slideover__name">{{ currentUser.displayName }}</p>
-                <div class="slideover__meta-list">
-                  <p class="slideover__meta"><span>{{ t("common.coin") }}</span><strong>{{ currentUser.coin }}</strong></p>
-                  <p class="slideover__meta"><span>{{ t("common.debt") }}</span><strong>{{ currentUser.bankDebt }}</strong></p>
+                <div class="slideover__profile-head">
+                  <img :src="avatarPath(currentUser.avatarIndex || 0)" alt="" class="slideover__avatar" />
+                  <div class="slideover__profile-main">
+                    <p class="slideover__name">{{ currentUser.displayName }}</p>
+                    <p class="slideover__username">@{{ currentUser.username }}</p>
+                  </div>
                 </div>
-                <button class="btn slideover__refresh" type="button" @click="showPanel = false; refreshBalance()">
-                  {{ t("sidebar.refreshBalance") }}
-                </button>
-                <button class="btn btn--danger slideover__logout" type="button" @click="showPanel = false; signOut()">
-                  {{ t("auth.logout") }}
-                </button>
+                <div class="slideover__meta-cards">
+                  <article class="slideover__meta-card">
+                    <span>{{ t("common.coin") }}</span>
+                    <strong>{{ currentUser.coin }}</strong>
+                  </article>
+                  <article class="slideover__meta-card">
+                    <span>{{ t("common.debt") }}</span>
+                    <strong>{{ currentUser.bankDebt }}</strong>
+                  </article>
+                </div>
+                <div class="slideover__profile-actions">
+                  <button class="btn slideover__refresh" type="button" @click="showPanel = false; refreshBalance()">
+                    {{ t("sidebar.refreshBalance") }}
+                  </button>
+                  <button class="btn btn--danger slideover__logout" type="button" @click="showPanel = false; signOut()">
+                    {{ t("auth.logout") }}
+                  </button>
+                </div>
               </div>
               <button
                 v-else
-                class="btn btn--primary"
+                class="btn btn--primary slideover__login"
                 type="button"
                 @click="showPanel = false; openLogin()"
               >
@@ -345,6 +356,19 @@ const desktopSecondaryLinks = links.filter(
       </div>
     </footer>
 
+    <TransitionGroup name="toast" tag="div" class="toast-stack">
+      <article
+        v-for="toast in toasts"
+        :key="toast.id"
+        class="toast"
+        :class="`toast--${toast.type}`"
+        role="alert"
+      >
+        <p>{{ toast.message }}</p>
+        <button type="button" class="toast__close" aria-label="close" @click="removeToast(toast.id)">✕</button>
+      </article>
+    </TransitionGroup>
+
     <div v-if="showLogin" class="modal" @click.self="showLogin = false">
       <div class="modal__panel auth-modal">
         <header class="auth-modal__head">
@@ -456,8 +480,5 @@ const desktopSecondaryLinks = links.filter(
       </div>
     </div>
 
-    <div v-if="authMessage" class="container">
-      <p class="muted">{{ authMessage }}</p>
-    </div>
   </div>
 </template>

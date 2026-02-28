@@ -1,25 +1,40 @@
 <script setup lang="ts">
-import { ref } from "vue"
+import { computed, ref } from "vue"
 import { useMMarket } from "~/composables/useMMarket"
 import { useLocale } from "~/composables/useLocale"
+import { useToast } from "~/composables/useToast"
 
 const { currentUser, borrowFromBank, repayToBank, thbValue, exchangeRate } = useMMarket()
 const { t } = useLocale()
+const { pushError, pushSuccess } = useToast()
 
 const mode = ref<'borrow' | 'repay'>('borrow')
 const amount = ref<number | null>(null)
 const note = ref('')
-const message = ref('')
+const isSubmitting = ref(false)
+const loadingText = computed(() =>
+  mode.value === 'borrow' ? 'Borrowing M-Coin...' : 'Repaying M-Coin...'
+)
 
-const submit = () => {
+const submit = async () => {
+  if (isSubmitting.value) return
+  isSubmitting.value = true
   const coin = Number(amount.value)
-  const result = mode.value === 'borrow'
-    ? borrowFromBank(coin, note.value)
-    : repayToBank(coin, note.value)
-  message.value = result.message
-  if (result.ok) {
-    amount.value = null
-    note.value = ''
+  try {
+    const result = mode.value === 'borrow'
+      ? await borrowFromBank(coin, note.value)
+      : await repayToBank(coin, note.value)
+    if (!result.ok) {
+      pushError(result.message)
+      return
+    }
+    pushSuccess(result.message)
+    if (result.ok) {
+      amount.value = null
+      note.value = ''
+    }
+  } finally {
+    isSubmitting.value = false
   }
 }
 </script>
@@ -56,7 +71,7 @@ const submit = () => {
             class="bank-mode__btn"
             type="button"
             :class="{ 'is-active': mode === 'borrow' }"
-            :disabled="!currentUser"
+            :disabled="!currentUser || isSubmitting"
             @click="mode = 'borrow'"
           >
             {{ t("bank.borrow") }}
@@ -65,7 +80,7 @@ const submit = () => {
             class="bank-mode__btn"
             type="button"
             :class="{ 'is-active': mode === 'repay' }"
-            :disabled="!currentUser"
+            :disabled="!currentUser || isSubmitting"
             @click="mode = 'repay'"
           >
             {{ t("bank.repay") }}
@@ -75,7 +90,7 @@ const submit = () => {
         <div class="field">
           <label for="bank-amount">{{ t("transfer.amount") }}</label>
           <div class="bank-amount-wrap">
-            <input id="bank-amount" v-model.number="amount" class="input bank-amount-input" type="number" min="1" required :disabled="!currentUser" />
+            <input id="bank-amount" v-model.number="amount" class="input bank-amount-input" type="number" min="1" required :disabled="!currentUser || isSubmitting" />
             <span class="bank-amount-unit">MC</span>
           </div>
           <p v-if="amount" class="muted bank-thb-hint">{{ t("bank.thbEq", { value: thbValue(Number(amount)) }) }}</p>
@@ -83,15 +98,20 @@ const submit = () => {
 
         <div class="field">
           <label for="bank-note">{{ t("common.note") }}</label>
-          <input id="bank-note" v-model="note" class="input" :placeholder="t('bank.optional')" />
+          <input id="bank-note" v-model="note" class="input" :placeholder="t('bank.optional')" :disabled="isSubmitting" />
         </div>
 
-        <button class="btn btn--primary bank-submit" type="submit" :disabled="!currentUser">
+        <button class="btn btn--primary bank-submit" type="submit" :disabled="!currentUser || isSubmitting">
           {{ mode === 'borrow' ? t('bank.confirmBorrow') : t('bank.confirmRepay') }}
         </button>
       </form>
     </div>
 
-    <p class="muted">{{ message || (!currentUser ? t('bank.loginHint') : '') }}</p>
+    <div v-if="isSubmitting" class="modal bank-loading" role="status" aria-live="polite">
+      <div class="modal__panel bank-loading__panel">
+        <span class="bank-loading__spinner" aria-hidden="true"></span>
+        <p>{{ loadingText }}</p>
+      </div>
+    </div>
   </section>
 </template>
