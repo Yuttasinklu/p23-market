@@ -8,6 +8,7 @@ Exchange reference: `1 M-coin = 10 THB` (display only)
 - Auth: `Authorization: Bearer <token>`
 - Content-Type: `application/json`
 - Time format: Unix timestamp (seconds) (`1740658500`)
+- Amount unit: integer `M-coin`
 
 ## Common Error Response
 ```json
@@ -40,6 +41,7 @@ Example response:
     "id": "u2",
     "username": "player1",
     "displayName": "Player 1",
+    "avatarIndex": 1,
     "role": "player"
   }
 }
@@ -47,6 +49,9 @@ Example response:
 
 ### `POST /auth/register`
 Create new player account.
+
+Notes:
+- `avatarIndex` range is `0-24`.
 
 Example request:
 ```json
@@ -204,7 +209,7 @@ Query params:
 - `from`: unix timestamp (seconds)
 - `to`: unix timestamp (seconds)
 - `page`: default `1`
-- `limit`: default `20`
+- `limit`: default `20`, max `100`
 
 Example request:
 ```http
@@ -348,6 +353,9 @@ Example response:
 ### `GET /dashboard`
 Return home page aggregate data.
 
+Notes:
+- `recentTransactions` should return latest `5` records (for home feed).
+
 Example request:
 ```http
 GET /api/v1/dashboard
@@ -357,8 +365,7 @@ Example response:
 ```json
 {
   "totals": {
-    "totalCoin": 1324,
-    "totalDebt": 438
+    "totalCoin": 1324
   },
   "topWinner": {
     "playerId": "u10",
@@ -388,6 +395,10 @@ Example response:
 
 ### `GET /arena/rooms`
 List open rooms for join.
+
+Notes:
+- No filter required in v1.
+- Return `status = open` rooms only.
 
 Example request:
 ```http
@@ -422,6 +433,10 @@ Example response:
 
 ### `POST /arena/rooms`
 Create room with fixed amount and hidden owner choice.
+
+Rules:
+- `amount` minimum is `5`.
+- Step is `5`.
 
 Example request:
 ```json
