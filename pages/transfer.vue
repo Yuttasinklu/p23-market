@@ -33,13 +33,17 @@ const submitTransfer = () => {
   <section class="transfer-page">
     <div class="card transfer-shell">
       <div class="transfer-head">
-        <div>
-          <h1 class="title">{{ t("nav.transfer") }}</h1>
+        <div class="transfer-head__intro">
+          <h1 class="title transfer-head__title">
+            <span>ส่ง M-Coin</span>
+            <img src="/images/m-coin.svg" alt="M-Coin" class="coin-unit transfer-head__title-coin" />
+          </h1>
+          <p class="muted transfer-head__subtitle">โอน M-Coin ระหว่างผู้เล่น</p>
         </div>
       </div>
 
       <form class="form transfer-form" @submit.prevent="submitTransfer">
-        <div class="field">
+        <div class="field transfer-field-card">
           <label for="receiver">{{ t("transfer.receiver") }}</label>
           <select id="receiver" v-model="receiverId" class="select" required :disabled="!currentUser">
             <option value="" disabled>{{ t("transfer.selectReceiver") }}</option>
@@ -49,7 +53,7 @@ const submitTransfer = () => {
           </select>
         </div>
 
-        <div class="field">
+        <div class="field transfer-field-card">
           <label for="amount">{{ t("transfer.amount") }}</label>
           <div class="transfer-amount-wrap">
             <input id="amount" v-model.number="amount" class="input transfer-amount-input" type="number" min="1" required :disabled="!currentUser" />
@@ -61,15 +65,16 @@ const submitTransfer = () => {
               :key="quick"
               type="button"
               class="transfer-quick__btn"
+              :class="{ 'is-active': amount === quick }"
               :disabled="!currentUser"
               @click="setQuickAmount(quick)"
             >
-              {{ quick }}
+              {{ quick }} MC
             </button>
           </div>
         </div>
 
-        <div class="field">
+        <div class="field transfer-field-card">
           <label for="note">{{ t("common.note") }}</label>
           <textarea id="note" v-model="note" class="textarea" :placeholder="t('transfer.notePlaceholder')"></textarea>
         </div>
@@ -80,6 +85,6 @@ const submitTransfer = () => {
       </form>
     </div>
 
-    <p class="muted">{{ message || (!currentUser ? t('transfer.loginHint') : '') }}</p>
+    <p class="muted">{{ message }}</p>
   </section>
 </template>

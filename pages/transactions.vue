@@ -3,7 +3,7 @@ import { computed } from "vue"
 import { useMMarket } from "~/composables/useMMarket"
 import { useLocale } from "~/composables/useLocale"
 
-const { recentTransactions, playerById, formatTime } = useMMarket()
+const { recentTransactions, playerById, formatTime, txLabel } = useMMarket()
 const { t } = useLocale()
 const displayTransactions = computed(() => recentTransactions.value.slice(0, 100))
 
@@ -14,12 +14,19 @@ const refreshPage = () => {
 
 <template>
   <section class="transactions-page">
-    <div class="transactions-actions">
-      <button type="button" class="btn" @click="refreshPage">Refresh</button>
+    <div class="card transactions-head">
+      <div class="transactions-head__intro">
+        <h1 class="title">{{ t("transactions.title") }}</h1>
+      </div>
+      <button type="button" class="btn transactions-head__refresh" @click="refreshPage">Refresh</button>
     </div>
 
     <div class="transactions-list">
       <article v-for="tx in displayTransactions" :key="tx.id" class="transactions-card">
+        <div class="transactions-card__meta">
+          <span class="transactions-type">{{ txLabel(tx) }}</span>
+          <p class="transactions-time">{{ formatTime(tx.createdAt) }}</p>
+        </div>
         <div class="transactions-card__top">
           <p class="transactions-route">
             <span class="transactions-player">{{ playerById(tx.fromUserId)?.displayName || t("common.bank") }}</span>
@@ -31,7 +38,6 @@ const refreshPage = () => {
           </p>
         </div>
         <p class="transactions-note">{{ tx.note || "-" }}</p>
-        <p class="transactions-time">{{ formatTime(tx.createdAt) }}</p>
       </article>
       <p v-if="displayTransactions.length === 0" class="muted">{{ t("common.noData") }}</p>
     </div>

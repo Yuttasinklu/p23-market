@@ -25,12 +25,32 @@ const topLoser = computed(
     <section class="dashboard-hero card">
       <div class="dashboard-hero__hud">
         <h1 class="title">{{ t("dashboard.title") }}</h1>
-        <p class="subtitle">{{ t("dashboard.subtitle") }}</p>
+        <div class="dashboard-hero__meta">
+          <p class="subtitle">Play to Earn</p>
+          <NuxtLink to="/about" class="btn dashboard-hero__whitepaper">
+            {{ t("dashboard.readWhitePaper") }}
+            <span class="dashboard-hero__whitepaper-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 6.5c0-1.1.9-2 2-2h5c1.3 0 2.5.5 3.4 1.3L15 6.4l.6-.6c.9-.8 2.1-1.3 3.4-1.3h1c1.1 0 2 .9 2 2V18c0 1.1-.9 2-2 2h-1c-1.3 0-2.5.5-3.4 1.3l-.6.6-.6-.6c-.9-.8-2.1-1.3-3.4-1.3H6c-1.1 0-2-.9-2-2V6.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="M15 6.5V20.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <path d="M7.2 9h4.2M7.2 12h4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </span>
+          </NuxtLink>
+        </div>
       </div>
       <div class="dashboard-hero__side">
-        <div class="dashboard-hero__coin-wrap">
-          <img src="/images/m-coin.svg" alt="coin" class="dashboard-hero__coin" />
-          <span class="dashboard-hero__coin-text">{{ t("dashboard.coinArena") }}</span>
+        <div class="dashboard-hero__coin-panel">
+          <div class="dashboard-hero__coin-wrap">
+            <img src="/images/m-coin.svg" alt="coin" class="dashboard-hero__coin" />
+            <span class="dashboard-hero__coin-text">{{ t("dashboard.coinArena") }}</span>
+          </div>
+          <div class="dashboard-hero__market-total">
+            <span class="dashboard-hero__market-label">{{ t("dashboard.totalCoin") }}</span>
+            <strong class="value value--coin">
+              {{ totalCoin }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
+            </strong>
+          </div>
         </div>
         <div class="dashboard-hero__quick">
           <article class="dashboard-hero__quick-card">
@@ -45,20 +65,20 @@ const topLoser = computed(
       </div>
     </section>
 
-    <section class="dashboard-stats">
-      <article class="card dashboard-stat dashboard-stat--coin">
-        <p class="dashboard-stat__label">{{ t("dashboard.totalCoin") }}</p>
-        <p class="value value--coin">{{ totalCoin }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit" /></p>
-      </article>
-      <article class="card dashboard-stat dashboard-stat--winner">
-        <p class="dashboard-stat__label">{{ t("dashboard.topWinner") }}</p>
+    <section class="card dashboard-vs-stats">
+      <article class="dashboard-vs-stats__side is-winner">
+        <p class="dashboard-vs-stats__label">{{ t("dashboard.topWinner") }}</p>
         <p class="value">{{ topWinner?.displayName || "-" }}</p>
-        <p class="muted">{{ t("common.net") }} {{ topWinner?.netWorth || 0 }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.mvp") }}</p>
+        <p class="dashboard-vs-stats__meta">
+          {{ t("common.net") }} {{ topWinner?.netWorth || 0 }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.mvp") }}
+        </p>
       </article>
-      <article class="card dashboard-stat dashboard-stat--danger">
-        <p class="dashboard-stat__label">{{ t("dashboard.topLoser") }}</p>
+      <article class="dashboard-vs-stats__side is-loser">
+        <p class="dashboard-vs-stats__label">{{ t("dashboard.topLoser") }}</p>
         <p class="value">{{ topLoser?.displayName || "-" }}</p>
-        <p class="muted">{{ t("common.net") }} {{ topLoser?.netWorth || 0 }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.comeback") }}</p>
+        <p class="dashboard-vs-stats__meta">
+          {{ t("common.net") }} {{ topLoser?.netWorth || 0 }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.comeback") }}
+        </p>
       </article>
     </section>
 

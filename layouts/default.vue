@@ -79,6 +79,16 @@ const links = [
   { to: "/settlement", labelKey: "nav.settlement" },
   { to: "/about", labelKey: "nav.about" },
 ];
+
+const desktopPrimaryLinks = [
+  { to: "/transfer", labelKey: "nav.transfer", icon: "⇄" },
+  { to: "/arena", labelKey: "nav.arena", icon: "⚔" },
+  { to: "/bank", labelKey: "nav.bank", icon: "🏦" },
+];
+
+const desktopSecondaryLinks = links.filter(
+  (link) => !["/transfer", "/bank"].includes(link.to),
+);
 </script>
 
 <template>
@@ -121,19 +131,30 @@ const links = [
     </header>
 
     <main class="container section">
-      <nav class="desktop-only row card">
-        <NuxtLink
-          v-for="link in links"
-          :key="link.to"
-          :to="link.to"
-          class="nav-link"
-          :class="{
-            muted: route.path !== link.to,
-            active: route.path === link.to,
-          }"
-        >
-          {{ t(link.labelKey) }}
-        </NuxtLink>
+      <nav class="desktop-only desktop-nav card">
+        <div class="desktop-nav__primary">
+          <NuxtLink
+            v-for="link in desktopPrimaryLinks"
+            :key="`desk-primary-${link.to}`"
+            :to="link.to"
+            class="desktop-nav__feature"
+            :class="{ 'is-active': route.path === link.to }"
+          >
+            <span class="desktop-nav__feature-icon" aria-hidden="true">{{ link.icon }}</span>
+            <span>{{ t(link.labelKey) }}</span>
+          </NuxtLink>
+        </div>
+        <div class="desktop-nav__secondary">
+          <NuxtLink
+            v-for="link in desktopSecondaryLinks"
+            :key="`desk-secondary-${link.to}`"
+            :to="link.to"
+            class="desktop-nav__item"
+            :class="{ 'is-active': route.path === link.to }"
+          >
+            {{ t(link.labelKey) }}
+          </NuxtLink>
+        </div>
       </nav>
 
       <slot />
