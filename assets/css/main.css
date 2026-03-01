@@ -2735,6 +2735,42 @@ p {
   transform: translateY(-2px);
 }
 
+.arena-vs__card-btn.is-picked {
+  box-shadow:
+    0 0 0 2px rgba(115, 193, 255, 0.3),
+    0 8px 18px rgba(6, 20, 43, 0.45);
+}
+
+.arena-vs__card-btn.is-picked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02));
+}
+
+.arena-vs__card-btn.is-win {
+  border-color: #67f4bf;
+  box-shadow:
+    0 0 0 2px rgba(75, 228, 167, 0.34),
+    0 10px 22px rgba(10, 61, 46, 0.55);
+}
+
+.arena-vs__card-btn.is-lose {
+  border-color: #ff8f99;
+  box-shadow:
+    0 0 0 2px rgba(255, 124, 139, 0.3),
+    0 10px 22px rgba(74, 17, 30, 0.52);
+}
+
+.arena-vs__card-btn.is-draw {
+  border-color: #9ec8ff;
+  box-shadow:
+    0 0 0 2px rgba(132, 178, 239, 0.3),
+    0 10px 22px rgba(18, 39, 69, 0.5);
+}
+
 .arena-vs__card-btn:disabled {
   cursor: default;
 }
@@ -2750,6 +2786,20 @@ p {
 .arena-vs__card-btn--opponent.is-hidden .arena-choice-card {
   filter: grayscale(1) brightness(0.4) blur(1px);
   opacity: 0.84;
+}
+
+.arena-vs__card-btn--opponent.is-unpicked .arena-choice-card {
+  filter: grayscale(1) brightness(0.55);
+  opacity: 0.7;
+}
+
+.arena-vs__card-btn--opponent.is-unpicked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  background: rgba(84, 97, 119, 0.4);
+  pointer-events: none;
 }
 
 .arena-vs__cover {

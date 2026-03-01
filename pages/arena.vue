@@ -10,6 +10,7 @@ type MatchResult = "win" | "lose" | "draw"
 
 interface ArenaRoom {
   id: string
+  name?: string
   ownerId: string
   ownerDisplayName?: string
   ownerAvatarIndex?: number
@@ -45,11 +46,13 @@ const showHistoryModal = ref(false)
 const loadingRooms = ref(false)
 const loadingMatches = ref(false)
 const isCreatingRoom = ref(false)
+const roomName = ref("")
 const amount = ref(50)
 const choice = ref<ArenaChoice>("rock")
 const myChoice = ref<ArenaChoice | null>(null)
 const revealedOwnerChoice = ref<ArenaChoice | null>(null)
 const matchResult = ref<MatchResult | null>(null)
+const resultStatusMessage = ref("")
 const activeRoom = ref<ArenaRoom | null>(null)
 const isResolving = ref(false)
 const resolveTimer = ref<ReturnType<typeof setTimeout> | null>(null)
@@ -69,6 +72,23 @@ const choiceOptions = computed<Array<{ value: ArenaChoice; label: string; image:
 
 const normalizeChoice = (value: unknown): ArenaChoice =>
   value === "scissor" ? "scissors" : (value as ArenaChoice)
+
+const mapRoom = (raw: Record<string, any>): ArenaRoom => ({
+  id: String(raw.id || ""),
+  name: typeof raw.name === "string"
+    ? raw.name
+    : typeof raw.roomName === "string"
+      ? raw.roomName
+      : typeof raw.title === "string"
+        ? raw.title
+        : undefined,
+  ownerId: String(raw.ownerId || ""),
+  ownerDisplayName: raw.ownerDisplayName || undefined,
+  ownerAvatarIndex: Number.isInteger(raw.ownerAvatarIndex) ? Number(raw.ownerAvatarIndex) : undefined,
+  amount: Number(raw.amount || 0),
+  status: "open",
+  createdAt: Number(raw.createdAt || 0)
+})
 
 const mapMatch = (raw: Record<string, any>): ArenaMatch => ({
   id: String(raw.id || ""),
@@ -103,6 +123,83 @@ const resultText = computed(() => {
   return t("arena.resultDraw")
 })
 
+const winTauntKeys = [
+  "arena.resultTauntWin1",
+  "arena.resultTauntWin2",
+  "arena.resultTauntWin3",
+  "arena.resultTauntWin4"
+]
+
+const loseTauntKeys = [
+  "arena.resultTauntLose1",
+  "arena.resultTauntLose2",
+  "arena.resultTauntLose3",
+  "arena.resultTauntLose4"
+]
+
+const drawTauntKeys = [
+  "arena.resultTauntDraw1",
+  "arena.resultTauntDraw2",
+  "arena.resultTauntDraw3"
+]
+
+const pickRandom = (items: string[]) =>
+  items[Math.floor(Math.random() * items.length)]
+
+const buildResultStatusText = (result: MatchResult) => {
+  if (!currentUser.value || !activeRoom.value) return ""
+  const opponent = activeOwner.value?.displayName || t("arena.opponentSide")
+  const amount = activeRoom.value.amount
+
+  if (result === "win") {
+    return t(pickRandom(winTauntKeys), {
+      winner: currentUser.value.displayName,
+      loser: opponent,
+      amount
+    })
+  }
+
+  if (result === "lose") {
+    return t(pickRandom(loseTauntKeys), {
+      winner: opponent,
+      loser: currentUser.value.displayName,
+      amount
+    })
+  }
+
+  return t(pickRandom(drawTauntKeys), { amount })
+}
+
+const playerChoiceClass = (value: ArenaChoice) => {
+  const isPicked = myChoice.value === value
+  return {
+    "is-active": isPicked,
+    "is-picked": isPicked && !!matchResult.value,
+    "is-win": isPicked && matchResult.value === "win",
+    "is-lose": isPicked && matchResult.value === "lose",
+    "is-draw": isPicked && matchResult.value === "draw"
+  }
+}
+
+const opponentChoiceClass = (value: ArenaChoice) => {
+  const isPicked = !!matchResult.value && revealedOwnerChoice.value === value
+  const opponentResult =
+    matchResult.value === "win"
+      ? "lose"
+      : matchResult.value === "lose"
+        ? "win"
+        : matchResult.value
+  return {
+    "is-hidden": !matchResult.value,
+    "is-active": isPicked,
+    "is-picked": isPicked,
+    "is-unpicked": !!matchResult.value && !isPicked,
+    "is-win": isPicked && opponentResult === "win",
+    "is-lose": isPicked && opponentResult === "lose",
+    "is-draw": isPicked && opponentResult === "draw"
+  }
+}
+
 const playerName = (id?: string, fallback?: string) =>
   playerById(id)?.displayName || fallback || id || "-"
 
@@ -114,11 +211,13 @@ const extractApiError = (error: unknown, fallback: string) => {
 const refreshRooms = async () => {
   loadingRooms.value = true
   try {
-    const response = await apiFetch<{ items: ArenaRoom[] }>("arena/rooms", {
+    const response = await apiFetch<{ items: Array<Record<string, any>> }>("arena/rooms", {
       method: "GET",
       headers: authHeaders.value
     })
-    rooms.value = Array.isArray(response.items) ? response.items : []
+    rooms.value = Array.isArray(response.items)
+      ? response.items.map((item) => mapRoom(item))
+      : []
   } catch {
     rooms.value = []
   } finally {
@@ -152,6 +251,7 @@ const openCreateModal = () => {
     pushError(t("arena.loginHint"))
     return
   }
+  roomName.value = ""
   showCreateModal.value = true
 }
 
@@ -161,17 +261,24 @@ const createRoom = async () => {
     pushError(t("arena.loginHint"))
     return
   }
+  const trimmedRoomName = roomName.value.trim()
+  if (!trimmedRoomName) {
+    pushError(t("arena.roomNameRequired"))
+    return
+  }
   isCreatingRoom.value = true
   try {
     await apiFetch("arena/rooms", {
       method: "POST",
       headers: authHeaders.value,
       body: {
+        name: trimmedRoomName,
         amount: Number(amount.value),
         choice: choice.value
       }
     })
     showCreateModal.value = false
+    roomName.value = ""
     pushSuccess(t("arena.created"))
     await Promise.all([refreshRooms(), reloadData()])
   } catch (error) {
@@ -193,6 +300,7 @@ const resetVersusState = () => {
   myChoice.value = null
   revealedOwnerChoice.value = null
   matchResult.value = null
+  resultStatusMessage.value = ""
   isResolving.value = false
   if (resolveTimer.value) {
     clearTimeout(resolveTimer.value)
@@ -250,6 +358,9 @@ const playChoice = async (selectedChoice: ArenaChoice) => {
         : resolved.winnerUserId === currentUser.value?.id
           ? "win"
           : "lose"
+      if (matchResult.value) {
+        resultStatusMessage.value = buildResultStatusText(matchResult.value)
+      }
       isResolving.value = false
 
       await Promise.all([refreshRooms(), refreshMatches(), reloadData()])
@@ -298,7 +409,8 @@ onBeforeUnmount(() => {
 
     <div v-if="openRooms.length" class="arena-rooms__grid">
       <article v-for="room in openRooms" :key="room.id" class="arena-room-card">
-        <p class="arena-room-card__id">#{{ room.id }}</p>
+        <p v-if="room.name" class="arena-room-card__id">{{ room.name }}</p>
+        <p v-else class="arena-room-card__id">#{{ room.id }}</p>
         <div class="arena-room-card__meta">
           <p>
             <span class="muted">{{ t("arena.owner") }}: </span>
@@ -318,6 +430,19 @@ onBeforeUnmount(() => {
       <div class="modal__panel">
         <h3>{{ t("arena.createRoom") }}</h3>
         <form class="form" @submit.prevent="createRoom">
+          <div class="field">
+            <label for="arena-room-name">{{ t("arena.roomName") }}</label>
+            <input
+              id="arena-room-name"
+              v-model="roomName"
+              class="input"
+              :placeholder="t('arena.roomNamePlaceholder')"
+              maxlength="48"
+              required
+              :disabled="isCreatingRoom"
+            />
+          </div>
+
           <div class="field">
             <label>{{ t("arena.amount") }}</label>
             <div class="arena-amount-step">
@@ -384,7 +509,7 @@ onBeforeUnmount(() => {
                 :key="`mine-${item.value}`"
                 type="button"
                 class="arena-vs__card-btn"
-                :class="{ 'is-active': myChoice === item.value }"
+                :class="playerChoiceClass(item.value)"
                 :disabled="isResolving"
                 @click="playChoice(item.value)"
               >
@@ -402,10 +527,7 @@ onBeforeUnmount(() => {
                 v-for="item in choiceOptions"
                 :key="`opp-${item.value}`"
                 class="arena-vs__card-btn arena-vs__card-btn--opponent"
-                :class="{
-                  'is-hidden': !matchResult,
-                  'is-active': matchResult && revealedOwnerChoice === item.value
-                }"
+                :class="opponentChoiceClass(item.value)"
               >
                 <img :src="item.image" :alt="item.label" class="arena-choice-card" />
                 <span v-if="!matchResult" class="arena-vs__cover">?</span>
@@ -416,7 +538,7 @@ onBeforeUnmount(() => {
 
         <p v-if="!myChoice" class="arena-vs__status muted">{{ t("arena.pickChoice") }}</p>
         <p v-else-if="isResolving" class="arena-vs__status muted">{{ t("arena.revealing") }}</p>
-        <p v-else class="arena-vs__status" :class="`is-${matchResult}`">{{ resultText }}</p>
+        <p v-else class="arena-vs__status" :class="`is-${matchResult}`">{{ resultStatusMessage || resultText }}</p>
 
         <div class="row arena-vs__actions">
           <button class="btn" type="button" @click="closeVersusModal">{{ t("sidebar.close") }}</button>
