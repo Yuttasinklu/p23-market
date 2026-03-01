@@ -47,7 +47,7 @@ const loadingRooms = ref(false)
 const loadingMatches = ref(false)
 const isCreatingRoom = ref(false)
 const roomName = ref("")
-const amount = ref(50)
+const amount = ref(10)
 const choice = ref<ArenaChoice>("rock")
 const myChoice = ref<ArenaChoice | null>(null)
 const revealedOwnerChoice = ref<ArenaChoice | null>(null)
@@ -330,7 +330,7 @@ const joinRoom = (room: ArenaRoom) => {
 }
 
 const playChoice = async (selectedChoice: ArenaChoice) => {
-  if (!activeRoom.value || isResolving.value || !currentUser.value) return
+  if (!activeRoom.value || isResolving.value || !!matchResult.value || !currentUser.value) return
 
   myChoice.value = selectedChoice
   matchResult.value = null
@@ -510,7 +510,7 @@ onBeforeUnmount(() => {
                 type="button"
                 class="arena-vs__card-btn"
                 :class="playerChoiceClass(item.value)"
-                :disabled="isResolving"
+                :disabled="isResolving || !!matchResult"
                 @click="playChoice(item.value)"
               >
                 <img :src="item.image" :alt="item.label" class="arena-choice-card" />
