@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useMMarket } from "~/composables/useMMarket";
 import { useLocale } from "~/composables/useLocale";
 import { useToast } from "~/composables/useToast";
 
-const { currentUser, login, register, logout, refreshCurrentUserOnly } = useMMarket();
+const { currentUser, login, register, logout, refreshCurrentUserOnly, exchangeRate } = useMMarket();
 const { locale, setLocale, t } = useLocale();
 const { toasts, pushError, removeToast } = useToast();
+const ONBOARDING_SEEN_KEY = "p23-market-onboarding-seen";
 
 const route = useRoute();
 const showLogin = ref(false);
@@ -18,11 +19,33 @@ const loginPassword = ref("");
 const isLoginSubmitting = ref(false);
 const isRegisterSubmitting = ref(false);
 const isBalanceRefreshing = ref(false);
+const showOnboarding = ref(false);
+const onboardingStep = ref(0);
 const registerName = ref("");
 const registerUsername = ref("");
 const registerPassword = ref("");
 const registerAvatarIndex = ref(0);
 const avatarOptions = computed(() => Array.from({ length: 25 }, (_, index) => index));
+const onboardingSlides = computed(() => [
+  {
+    title: t("onboard.step1Title"),
+    body: t("onboard.step1Body", { rate: exchangeRate }),
+    hint: t("onboard.step1Hint")
+  },
+  {
+    title: t("onboard.step2Title"),
+    body: t("onboard.step2Body"),
+    hint: t("onboard.step2Hint")
+  },
+  {
+    title: t("onboard.step3Title"),
+    body: t("onboard.step3Body"),
+    hint: t("onboard.step3Hint")
+  }
+]);
+const isOnboardingLastStep = computed(
+  () => onboardingStep.value >= onboardingSlides.value.length - 1
+);
 
 const openLogin = () => {
   showRegister.value = false;
@@ -32,6 +55,35 @@ const openLogin = () => {
 const openRegister = () => {
   showLogin.value = false;
   showRegister.value = true;
+};
+
+const markOnboardingSeen = () => {
+  if (!process.client) return;
+  localStorage.setItem(ONBOARDING_SEEN_KEY, "1");
+};
+
+const openOnboarding = (reset = true, rememberSeen = true) => {
+  if (reset) onboardingStep.value = 0;
+  if (rememberSeen) markOnboardingSeen();
+  showOnboarding.value = true;
+};
+
+const closeOnboarding = (remember = true) => {
+  showOnboarding.value = false;
+  if (!remember) return;
+  markOnboardingSeen();
+};
+
+const nextOnboarding = () => {
+  if (isOnboardingLastStep.value) {
+    closeOnboarding(true);
+    return;
+  }
+  onboardingStep.value += 1;
+};
+
+const prevOnboarding = () => {
+  onboardingStep.value = Math.max(0, onboardingStep.value - 1);
 };
 
 const avatarPath = (index: number) => `/images/avatars/${index}.png`;
@@ -108,6 +160,12 @@ const desktopPrimaryLinks = [
 const desktopSecondaryLinks = links.filter(
   (link) => !["/transfer", "/bank"].includes(link.to),
 );
+
+onMounted(() => {
+  if (!process.client) return;
+  const seen = localStorage.getItem(ONBOARDING_SEEN_KEY) === "1";
+  if (!seen) openOnboarding(true, true);
+});
 </script>
 
 <template>
@@ -306,6 +364,9 @@ const desktopSecondaryLinks = links.filter(
                   {{ t(link.labelKey) }}
                 </NuxtLink>
               </div>
+              <button class="btn slideover__guide" type="button" @click="showPanel = false; openOnboarding(false, false)">
+                {{ t("onboard.open") }}
+              </button>
             </div>
 
             <div class="slideover__lang-footer">
@@ -342,13 +403,13 @@ const desktopSecondaryLinks = links.filter(
           >
             <span class="mobile-nav__icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none">
-                <circle cx="8" cy="8.5" r="3" stroke="currentColor" stroke-width="1.8" />
-                <circle cx="16.5" cy="9.5" r="2.5" stroke="currentColor" stroke-width="1.8" />
-                <path d="M3.5 19c0-2.6 2-4.7 4.5-4.7s4.5 2.1 4.5 4.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-                <path d="M13 19c0-2 1.6-3.7 3.5-3.7S20 17 20 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                <rect x="4" y="12" width="4" height="8" rx="1" stroke="currentColor" stroke-width="1.8" />
+                <rect x="10" y="9" width="4" height="11" rx="1" stroke="currentColor" stroke-width="1.8" />
+                <rect x="16" y="6" width="4" height="14" rx="1" stroke="currentColor" stroke-width="1.8" />
+                <path d="M4 8.5h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
               </svg>
             </span>
-            <span class="mobile-nav__label">{{ t("nav.players") }}</span>
+            <span class="mobile-nav__label">{{ t("nav.rank") }}</span>
           </NuxtLink>
           <NuxtLink
             class="mobile-nav__item mobile-nav__transfer"
@@ -400,6 +461,62 @@ const desktopSecondaryLinks = links.filter(
         <button type="button" class="toast__close" aria-label="close" @click="removeToast(toast.id)">✕</button>
       </article>
     </TransitionGroup>
+
+    <div v-if="showOnboarding" class="modal" @click.self="closeOnboarding(false)">
+      <div class="modal__panel onboard-modal">
+        <header class="onboard-modal__head">
+          <div class="onboard-modal__title-wrap">
+            <img src="/images/m-coin.svg" alt="" class="onboard-modal__icon" aria-hidden="true" />
+            <div>
+              <h3 class="onboard-modal__title">{{ t("onboard.title") }}</h3>
+              <p class="onboard-modal__subtitle">{{ t("onboard.subtitle") }}</p>
+            </div>
+          </div>
+          <div class="onboard-modal__head-actions">
+            <div class="lang-switch onboard-modal__lang" role="group" aria-label="Language">
+              <button class="lang-switch__btn" :class="{ 'is-active': locale === 'en' }" type="button" @click="setLocale('en')">EN</button>
+              <button class="lang-switch__btn" :class="{ 'is-active': locale === 'th' }" type="button" @click="setLocale('th')">TH</button>
+            </div>
+            <button class="btn onboard-modal__close" type="button" @click="closeOnboarding(true)">✕</button>
+          </div>
+        </header>
+
+        <div class="onboard-modal__stepper">
+          <span
+            v-for="(_, index) in onboardingSlides"
+            :key="`onboard-dot-${index}`"
+            class="onboard-modal__dot"
+            :class="{ 'is-active': onboardingStep === index }"
+          />
+        </div>
+
+        <article class="onboard-slide">
+          <div class="onboard-slide__visual" :class="`is-step-${onboardingStep + 1}`">
+            <img v-if="onboardingStep === 0" src="/images/m-coin.svg" alt="M-coin" />
+            <svg v-else-if="onboardingStep === 1" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 9L12 4l9 5v2H3V9z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+              <path d="M5 11v7M9 11v7M15 11v7M19 11v7M3 20h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" />
+              <path d="M12 7v10M7 12h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </div>
+          <h4 class="onboard-slide__title">{{ onboardingSlides[onboardingStep]?.title }}</h4>
+          <p class="onboard-slide__body">{{ onboardingSlides[onboardingStep]?.body }}</p>
+          <p class="onboard-slide__hint">{{ onboardingSlides[onboardingStep]?.hint }}</p>
+        </article>
+
+        <div class="onboard-modal__actions">
+          <button class="btn onboard-modal__back" type="button" :disabled="onboardingStep === 0" @click="prevOnboarding">
+            {{ t("onboard.back") }}
+          </button>
+          <button class="btn btn--primary onboard-modal__next" type="button" @click="nextOnboarding">
+            {{ isOnboardingLastStep ? t("onboard.done") : t("onboard.next") }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <div v-if="showLogin" class="modal" @click.self="showLogin = false">
       <div class="modal__panel auth-modal">

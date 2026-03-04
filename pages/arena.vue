@@ -6,6 +6,7 @@ import { useApi } from "~/composables/useApi"
 import { useToast } from "~/composables/useToast"
 
 type ArenaChoice = "rock" | "paper" | "scissors"
+type ArenaSelectableChoice = ArenaChoice | "random"
 type MatchResult = "win" | "lose" | "draw"
 
 interface ArenaRoom {
@@ -46,6 +47,7 @@ const showHistoryModal = ref(false)
 const loadingRooms = ref(false)
 const loadingMatches = ref(false)
 const isCreatingRoom = ref(false)
+const isRollingChoice = ref(false)
 const roomName = ref("")
 const amount = ref(10)
 const choice = ref<ArenaChoice>("rock")
@@ -57,18 +59,63 @@ const activeRoom = ref<ArenaRoom | null>(null)
 const isResolving = ref(false)
 const resolveTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const roomsInterval = ref<ReturnType<typeof setInterval> | null>(null)
+const randomChoiceTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const amountStep = 5
 const minAmount = 5
+const quickAmounts = [10, 20, 50, 100]
 
 const authHeaders = computed(() =>
   authToken.value ? { Authorization: `Bearer ${authToken.value}` } : {}
 )
 
-const choiceOptions = computed<Array<{ value: ArenaChoice; label: string; image: string }>>(() => [
+const rpsOptions = computed<Array<{ value: ArenaChoice; label: string; image: string }>>(() => [
   { value: "rock", label: t("arena.choiceRock"), image: "/images/rps-rock-card.png" },
   { value: "paper", label: t("arena.choicePaper"), image: "/images/rps-paper-card.png" },
   { value: "scissors", label: t("arena.choiceScissor"), image: "/images/rps-scissor-card.png" }
 ])
+
+const createChoiceOptions = computed<
+  Array<{ value: ArenaSelectableChoice; label: string; image?: string; isRandom?: boolean }>
+>(() => [
+  ...rpsOptions.value,
+  { value: "random", label: t("arena.choiceRandom"), isRandom: true }
+])
+
+const randomChoicePool: ArenaChoice[] = ["rock", "paper", "scissors"]
+
+const pickRandomChoice = () =>
+  randomChoicePool[Math.floor(Math.random() * randomChoicePool.length)]
+
+const stopChoiceRolling = () => {
+  if (randomChoiceTimer.value) {
+    clearInterval(randomChoiceTimer.value)
+    randomChoiceTimer.value = null
+  }
+  isRollingChoice.value = false
+}
+
+const selectChoice = (value: ArenaSelectableChoice) => {
+  if (isCreatingRoom.value) return
+  if (value !== "random") {
+    stopChoiceRolling()
+    choice.value = value
+    return
+  }
+  if (isRollingChoice.value) return
+
+  isRollingChoice.value = true
+  let tick = 0
+  const maxTick = 14 + Math.floor(Math.random() * 6)
+
+  randomChoiceTimer.value = setInterval(() => {
+    choice.value = pickRandomChoice()
+    tick += 1
+    if (tick >= maxTick) {
+      stopChoiceRolling()
+      choice.value = pickRandomChoice()
+    }
+  }, 95)
+}
 
 const normalizeChoice = (value: unknown): ArenaChoice =>
   value === "scissor" ? "scissors" : (value as ArenaChoice)
@@ -251,12 +298,14 @@ const openCreateModal = () => {
     pushError(t("arena.loginHint"))
     return
   }
+  stopChoiceRolling()
   roomName.value = ""
+  choice.value = "rock"
   showCreateModal.value = true
 }
 
 const createRoom = async () => {
-  if (isCreatingRoom.value) return
+  if (isCreatingRoom.value || isRollingChoice.value) return
   if (!currentUser.value) {
     pushError(t("arena.loginHint"))
     return
@@ -294,6 +343,10 @@ const decreaseAmount = () => {
 
 const increaseAmount = () => {
   amount.value += amountStep
+}
+
+const setQuickAmount = (value: number) => {
+  amount.value = Math.max(minAmount, value)
 }
 
 const resetVersusState = () => {
@@ -382,7 +435,12 @@ watch(authToken, async () => {
   await Promise.all([refreshRooms(), refreshMatches()])
 })
 
+watch(showCreateModal, (visible) => {
+  if (!visible) stopChoiceRolling()
+})
+
 onBeforeUnmount(() => {
+  stopChoiceRolling()
   if (resolveTimer.value) clearTimeout(resolveTimer.value)
   if (roomsInterval.value) clearInterval(roomsInterval.value)
 })
@@ -445,6 +503,19 @@ onBeforeUnmount(() => {
 
           <div class="field">
             <label>{{ t("arena.amount") }}</label>
+            <div class="arena-quick">
+              <button
+                v-for="quick in quickAmounts"
+                :key="`arena-quick-${quick}`"
+                type="button"
+                class="arena-quick__btn"
+                :class="{ 'is-active': amount === quick }"
+                :disabled="isCreatingRoom"
+                @click="setQuickAmount(quick)"
+              >
+                {{ quick }}
+              </button>
+            </div>
             <div class="arena-amount-step">
               <button
                 type="button"
@@ -468,22 +539,39 @@ onBeforeUnmount(() => {
 
           <div class="field">
             <label>{{ t("arena.choice") }}</label>
-            <div class="arena-options arena-options--choice">
+            <div class="arena-options arena-options--choice" :class="{ 'is-randomizing': isRollingChoice }">
               <button
-                v-for="item in choiceOptions"
+                v-for="item in createChoiceOptions"
                 :key="item.value"
                 type="button"
                 class="arena-options__btn arena-options__btn--choice"
-                :class="{ 'is-active': choice === item.value }"
+                :class="{
+                  'is-active': choice === item.value,
+                  'arena-options__btn--choice-random': item.value === 'random'
+                }"
                 :disabled="isCreatingRoom"
-                @click="choice = item.value"
+                @click="selectChoice(item.value)"
               >
-                <img :src="item.image" :alt="item.label" class="arena-choice-card" />
+                <img
+                  v-if="item.image"
+                  :src="item.image"
+                  :alt="item.label"
+                  class="arena-choice-card"
+                />
+                <div v-else class="arena-choice-card arena-choice-card--random">
+                  <svg viewBox="0 0 24 24" class="arena-choice-card__random-icon" aria-hidden="true">
+                    <rect x="4" y="4" width="16" height="16" rx="3" />
+                    <circle cx="9" cy="9" r="1.2" />
+                    <circle cx="15" cy="12" r="1.2" />
+                    <circle cx="9" cy="15" r="1.2" />
+                  </svg>
+                  <span class="arena-choice-card__random-text">{{ item.label }}</span>
+                </div>
               </button>
             </div>
           </div>
 
-          <button class="btn btn--primary" type="submit" :disabled="isCreatingRoom">
+          <button class="btn btn--primary" type="submit" :disabled="isCreatingRoom || isRollingChoice">
             {{ isCreatingRoom ? "Creating..." : t("arena.confirmCreate") }}
           </button>
         </form>
@@ -505,7 +593,7 @@ onBeforeUnmount(() => {
             <p class="arena-vs__label">{{ t("arena.yourSide") }}</p>
             <div class="arena-vs__cards">
               <button
-                v-for="item in choiceOptions"
+                v-for="item in rpsOptions"
                 :key="`mine-${item.value}`"
                 type="button"
                 class="arena-vs__card-btn"
@@ -524,7 +612,7 @@ onBeforeUnmount(() => {
             </p>
             <div class="arena-vs__cards">
               <div
-                v-for="item in choiceOptions"
+                v-for="item in rpsOptions"
                 :key="`opp-${item.value}`"
                 class="arena-vs__card-btn arena-vs__card-btn--opponent"
                 :class="opponentChoiceClass(item.value)"

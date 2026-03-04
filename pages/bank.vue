@@ -12,6 +12,7 @@ const mode = ref<'borrow' | 'repay'>('borrow')
 const amount = ref<number | null>(null)
 const note = ref('')
 const isSubmitting = ref(false)
+const quickAmounts = [10, 30, 50, 100, 200]
 const loadingText = computed(() =>
   mode.value === 'borrow' ? 'Borrowing M-Coin...' : 'Repaying M-Coin...'
 )
@@ -37,11 +38,21 @@ const submit = async () => {
     isSubmitting.value = false
   }
 }
+
+const setQuickAmount = (value: number) => {
+  amount.value = value
+}
 </script>
 
 <template>
-  <section class="bank-page">
-    <div class="card bank-shell">
+  <div class="bank-layout">
+    <article class="card bank-banner" role="note" aria-live="polite">
+      <p class="bank-banner__title">{{ t("bank.warningTitle") }}</p>
+      <p class="bank-banner__text">{{ t("bank.warningBody") }}</p>
+    </article>
+
+    <section class="bank-page">
+      <div class="card bank-shell">
       <header class="bank-head">
         <div>
           <h1 class="title">{{ t("bank.title") }}</h1>
@@ -49,11 +60,6 @@ const submit = async () => {
         </div>
         <span class="pill">{{ t("bank.personal") }}</span>
       </header>
-
-      <article class="bank-warning" role="note" aria-live="polite">
-        <p class="bank-warning__title">{{ t("bank.warningTitle") }}</p>
-        <p class="bank-warning__text">{{ t("bank.warningBody") }}</p>
-      </article>
 
       <div v-if="currentUser" class="bank-balance-grid">
         <article class="bank-balance bank-balance--coin">
@@ -79,6 +85,7 @@ const submit = async () => {
             :disabled="!currentUser || isSubmitting"
             @click="mode = 'borrow'"
           >
+            <span class="bank-mode__icon" aria-hidden="true">+</span>
             {{ t("bank.borrow") }}
           </button>
           <button
@@ -88,6 +95,7 @@ const submit = async () => {
             :disabled="!currentUser || isSubmitting"
             @click="mode = 'repay'"
           >
+            <span class="bank-mode__icon" aria-hidden="true">↺</span>
             {{ t("bank.repay") }}
           </button>
         </div>
@@ -97,6 +105,19 @@ const submit = async () => {
           <div class="bank-amount-wrap">
             <input id="bank-amount" v-model.number="amount" class="input bank-amount-input" type="number" min="1" required :disabled="!currentUser || isSubmitting" />
             <span class="bank-amount-unit">MC</span>
+          </div>
+          <div class="bank-quick">
+            <button
+              v-for="quick in quickAmounts"
+              :key="`bank-quick-${quick}`"
+              type="button"
+              class="bank-quick__btn"
+              :class="{ 'is-active': amount === quick }"
+              :disabled="!currentUser || isSubmitting"
+              @click="setQuickAmount(quick)"
+            >
+              {{ quick }}
+            </button>
           </div>
           <p v-if="amount" class="muted bank-thb-hint">{{ t("bank.thbEq", { value: thbValue(Number(amount)) }) }}</p>
         </div>
@@ -110,13 +131,14 @@ const submit = async () => {
           {{ mode === 'borrow' ? t('bank.confirmBorrow') : t('bank.confirmRepay') }}
         </button>
       </form>
-    </div>
-
-    <div v-if="isSubmitting" class="modal bank-loading" role="status" aria-live="polite">
-      <div class="modal__panel bank-loading__panel">
-        <span class="bank-loading__spinner" aria-hidden="true"></span>
-        <p>{{ loadingText }}</p>
       </div>
-    </div>
-  </section>
+
+      <div v-if="isSubmitting" class="modal bank-loading" role="status" aria-live="polite">
+        <div class="modal__panel bank-loading__panel">
+          <span class="bank-loading__spinner" aria-hidden="true"></span>
+          <p>{{ loadingText }}</p>
+        </div>
+      </div>
+    </section>
+  </div>
 </template>

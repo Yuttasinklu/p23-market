@@ -25,6 +25,8 @@ const podium = computed(() => {
 const avatarPath = (index: number) => `/images/avatars/${index}.png`
 
 const leaderboardScore = (coin: number) => coin
+const summaryClass = (netWorth: number) =>
+  netWorth >= 0 ? "value--coin" : "value--danger"
 const refreshLeaderboard = async () => {
   if (isRefreshing.value) return
   isRefreshing.value = true
@@ -82,6 +84,7 @@ const refreshLeaderboard = async () => {
             <th>{{ t("common.player") }}</th>
             <th>{{ t("common.coin") }}</th>
             <th>{{ t("common.debt") }}</th>
+            <th>{{ t("common.net") }}</th>
           </tr>
         </thead>
         <tbody>
@@ -92,6 +95,9 @@ const refreshLeaderboard = async () => {
             </td>
             <td class="value--coin">{{ player.coin }}</td>
             <td>{{ player.bankDebt }}</td>
+            <td :class="summaryClass(player.netWorth)">
+              {{ player.netWorth }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
+            </td>
           </tr>
         </tbody>
       </table>
