@@ -15,7 +15,7 @@
 ## Suggested Parameters (v1)
 - Number range: fixed globally at `1..9`
 - Submission window: fixed at `15 sec`
-- Minimum players: `2`
+- Minimum players: `3`
 - Maximum players: `10`
 - Single-round resolution (no elimination stages)
 - Round always waits until timer ends, even if all players submitted early.
