@@ -112,7 +112,10 @@ watch(isAuthenticated, async (isAuth) => {
             {{ tx.amount }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
           </p>
         </div>
-        <p class="transactions-note">{{ tx.note || "-" }}</p>
+        <p class="transactions-note" :class="{ 'is-empty': !tx.note }">
+          <span class="transactions-note__label">{{ t("common.note") }}:</span>
+          <span class="transactions-note__text">{{ tx.note || "-" }}</span>
+        </p>
       </article>
       <p v-if="displayTransactions.length === 0" class="muted">{{ t("common.noData") }}</p>
     </div>
