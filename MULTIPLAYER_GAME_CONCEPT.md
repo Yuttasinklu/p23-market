@@ -40,7 +40,6 @@
 ### End Condition
 - Stop when survivors `<= 2`.
 - Survivors are winners.
-- Optional: if exactly 2 survivors and a single winner is required, run final tie-break stage.
 
 ### Example
 - Stage 1: 8 players -> Left 5, Right 3 -> Right 3 survive.
@@ -60,5 +59,4 @@
 - Reject duplicate submissions per stage.
 
 ## Open Decisions
-1. Majority Die final rule: allow 2 winners or force single winner tie-break?
-2. If stage keeps tying (equal/same side) many times, should system auto-cancel?
+1. If stage keeps tying (equal/same side) many times, should system auto-cancel?
