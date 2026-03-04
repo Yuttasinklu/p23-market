@@ -2555,6 +2555,32 @@ p {
   gap: 0.9rem;
 }
 
+.bank-info {
+  border: 1px solid rgba(72, 125, 191, 0.5);
+  border-radius: 11px;
+  padding: 0.68rem 0.74rem 0.64rem;
+  background: linear-gradient(180deg, rgba(14, 31, 58, 0.82), rgba(9, 22, 42, 0.86));
+}
+
+.bank-info__title {
+  margin: 0 0 0.28rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #b9dbff;
+}
+
+.bank-info__list {
+  margin: 0;
+  padding-left: 1.05rem;
+  display: grid;
+  gap: 0.28rem;
+  color: #cae1ff;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .bank-form label {
   color: #c2dcff;
   font-size: 0.78rem;

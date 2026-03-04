@@ -61,6 +61,15 @@ const setQuickAmount = (value: number) => {
         <span class="pill">{{ t("bank.personal") }}</span>
       </header>
 
+      <article class="bank-info" role="note" aria-live="polite">
+        <p class="bank-info__title">{{ t("bank.flowTitle") }}</p>
+        <ul class="bank-info__list">
+          <li>{{ t("bank.flowStep1") }}</li>
+          <li>{{ t("bank.flowStep2") }}</li>
+          <li>{{ t("bank.flowStep3") }}</li>
+        </ul>
+      </article>
+
       <div v-if="currentUser" class="bank-balance-grid">
         <article class="bank-balance bank-balance--coin">
           <p class="bank-balance__label">{{ t("bank.myCoin") }}</p>
