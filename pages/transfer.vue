@@ -47,10 +47,10 @@ const submitTransfer = async () => {
       <div class="transfer-head">
         <div class="transfer-head__intro">
           <h1 class="title transfer-head__title">
-            <span>ส่ง M-Coin</span>
-            <img src="/images/m-coin.svg" alt="M-Coin" class="coin-unit transfer-head__title-coin" />
+            <span>ส่ง DIM-Coin</span>
+            <img src="/images/dim-coin.png" alt="DIM-Coin" class="coin-unit transfer-head__title-coin" />
           </h1>
-          <p class="muted transfer-head__subtitle">โอน M-Coin ระหว่างผู้เล่น</p>
+          <p class="muted transfer-head__subtitle">โอน DIM-Coin ระหว่างผู้เล่น</p>
         </div>
       </div>
 
@@ -70,7 +70,7 @@ const submitTransfer = async () => {
           <div class="transfer-amount-wrap">
             <input id="amount" v-model.number="amount" class="input transfer-amount-input" type="number" min="1" required :disabled="!currentUser || isSubmitting" />
             <span class="transfer-amount-unit">
-              <img src="/images/m-coin.svg" alt="M-coin" class="coin-unit coin-unit--sm" />
+              <img src="/images/dim-coin.png" alt="DIM-coin" class="coin-unit coin-unit--sm" />
             </span>
           </div>
           <div class="transfer-quick">
@@ -84,7 +84,7 @@ const submitTransfer = async () => {
               @click="setQuickAmount(quick)"
             >
               <span>{{ quick }}</span>
-              <img src="/images/m-coin.svg" alt="M-coin" class="coin-unit coin-unit--sm" />
+              <img src="/images/dim-coin.png" alt="DIM-coin" class="coin-unit coin-unit--sm" />
             </button>
           </div>
         </div>
@@ -103,7 +103,7 @@ const submitTransfer = async () => {
     <div v-if="isSubmitting" class="modal transfer-loading" role="status" aria-live="polite">
       <div class="modal__panel transfer-loading__panel">
         <span class="transfer-loading__spinner" aria-hidden="true"></span>
-        <p>Transferring M-Coin...</p>
+        <p>Transferring DIM-Coin...</p>
       </div>
     </div>
   </section>

@@ -37,13 +37,13 @@ const { t } = useLocale();
       <div class="dashboard-hero__side">
         <div class="dashboard-hero__coin-panel">
           <div class="dashboard-hero__coin-wrap">
-            <img src="/images/m-coin.svg" alt="coin" class="dashboard-hero__coin" />
+            <img src="/images/dim-coin.png" alt="coin" class="dashboard-hero__coin" />
             <span class="dashboard-hero__coin-text">{{ t("dashboard.coinArena") }}</span>
           </div>
           <div class="dashboard-hero__market-total">
             <span class="dashboard-hero__market-label">{{ t("dashboard.totalCoin") }}</span>
             <strong class="value value--coin">
-              {{ dashboardTotalCoin }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
+              {{ dashboardTotalCoin }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
             </strong>
           </div>
         </div>
@@ -65,14 +65,14 @@ const { t } = useLocale();
         <p class="dashboard-vs-stats__label">{{ t("dashboard.topWinner") }}</p>
         <p class="value">{{ dashboardTopWinner?.displayName || "-" }}</p>
         <p class="dashboard-vs-stats__meta">
-          {{ t("common.net") }} {{ dashboardTopWinner?.netWorth || 0 }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.mvp") }}
+          {{ t("common.net") }} {{ dashboardTopWinner?.netWorth || 0 }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.mvp") }}
         </p>
       </article>
       <article class="dashboard-vs-stats__side is-loser">
         <p class="dashboard-vs-stats__label">{{ t("dashboard.topLoser") }}</p>
         <p class="value">{{ dashboardTopLoser?.displayName || "-" }}</p>
         <p class="dashboard-vs-stats__meta">
-          {{ t("common.net") }} {{ dashboardTopLoser?.netWorth || 0 }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.comeback") }}
+          {{ t("common.net") }} {{ dashboardTopLoser?.netWorth || 0 }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" /> • {{ t("dashboard.comeback") }}
         </p>
       </article>
     </section>
@@ -91,7 +91,7 @@ const { t } = useLocale();
           <div class="dashboard-feed__top">
             <strong class="dashboard-feed__type-pill">{{ txLabel(tx) }}</strong>
             <span class="dashboard-feed__amount">
-              {{ tx.amount }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
+              {{ tx.amount }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
             </span>
           </div>
           <p class="dashboard-feed__versus">
