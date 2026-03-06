@@ -109,7 +109,7 @@ watch(isAuthenticated, async (isAuth) => {
             </span>
           </p>
           <p class="transactions-amount value--coin">
-            {{ tx.amount }}<img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
+            {{ tx.amount }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
           </p>
         </div>
         <p class="transactions-note" :class="{ 'is-empty': !tx.note }">

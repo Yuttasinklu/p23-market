@@ -9,6 +9,7 @@ const { currentUser, login, register, logout, refreshCurrentUserOnly, exchangeRa
 const { locale, setLocale, t } = useLocale();
 const { toasts, pushError, removeToast } = useToast();
 const ONBOARDING_SEEN_KEY = "p23-market-onboarding-seen";
+const ROUND_ANNOUNCEMENT_SEEN_KEY = "holymarket-round-announcement-seen-v1";
 
 const route = useRoute();
 const showLogin = ref(false);
@@ -20,6 +21,7 @@ const isLoginSubmitting = ref(false);
 const isRegisterSubmitting = ref(false);
 const isBalanceRefreshing = ref(false);
 const showOnboarding = ref(false);
+const showRoundAnnouncement = ref(false);
 const onboardingStep = ref(0);
 const registerName = ref("");
 const registerUsername = ref("");
@@ -66,6 +68,23 @@ const openOnboarding = (reset = true, rememberSeen = true) => {
   if (reset) onboardingStep.value = 0;
   if (rememberSeen) markOnboardingSeen();
   showOnboarding.value = true;
+};
+
+const markRoundAnnouncementSeen = () => {
+  if (!process.client) return;
+  localStorage.setItem(ROUND_ANNOUNCEMENT_SEEN_KEY, "1");
+};
+
+const openRoundAnnouncement = () => {
+  showRoundAnnouncement.value = true;
+};
+
+const closeRoundAnnouncement = () => {
+  showRoundAnnouncement.value = false;
+  markRoundAnnouncementSeen();
+  if (!process.client) return;
+  const seenOnboarding = localStorage.getItem(ONBOARDING_SEEN_KEY) === "1";
+  if (!seenOnboarding) openOnboarding(true, true);
 };
 
 const closeOnboarding = (remember = true) => {
@@ -145,6 +164,7 @@ const links = [
   { to: "/", labelKey: "nav.home" },
   { to: "/players", labelKey: "nav.players" },
   { to: "/transfer", labelKey: "nav.transfer" },
+  { to: "/invoices/my", labelKey: "nav.invoices" },
   { to: "/transactions", labelKey: "nav.history" },
   { to: "/bank", labelKey: "nav.bank" },
   { to: "/settlement", labelKey: "nav.settlement" },
@@ -163,6 +183,11 @@ const desktopSecondaryLinks = links.filter(
 
 onMounted(() => {
   if (!process.client) return;
+  const seenRoundAnnouncement = localStorage.getItem(ROUND_ANNOUNCEMENT_SEEN_KEY) === "1";
+  if (!seenRoundAnnouncement) {
+    openRoundAnnouncement();
+    return;
+  }
   const seen = localStorage.getItem(ONBOARDING_SEEN_KEY) === "1";
   if (!seen) openOnboarding(true, true);
 });
@@ -173,8 +198,8 @@ onMounted(() => {
     <header class="topbar">
       <div class="container topbar__inner">
         <NuxtLink class="brand" to="/">
-          <img class="coin-icon" src="/images/m-coin.svg" alt="coin" />
-          <span>P23 Market</span>
+          <img class="coin-icon" src="/images/dim-coin.png" alt="coin" />
+          <span>Holymarket</span>
         </NuxtLink>
 
         <div class="topbar__right">
@@ -190,7 +215,7 @@ onMounted(() => {
               <div class="topbar__player-main">
                 <p class="topbar__player-name">{{ currentUser.displayName }}</p>
                 <p class="topbar__player-coin">
-                  {{ currentUser.coin }} <img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" />
+                  {{ currentUser.coin }} <img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
                 </p>
               </div>
               <button
@@ -264,10 +289,10 @@ onMounted(() => {
         <aside class="slideover__panel">
           <header class="slideover__header">
             <div class="slideover__title-wrap">
-              <img src="/images/m-coin.svg" alt="coin" class="slideover__logo" />
+              <img src="/images/dim-coin.png" alt="coin" class="slideover__logo" />
               <div>
                 <p class="slideover__kicker">{{ t("sidebar.menu") }}</p>
-                <h3 class="slideover__title">P23 Market</h3>
+                <h3 class="slideover__title">Holymarket</h3>
               </div>
             </div>
             <button class="btn slideover__close" type="button" :aria-label="t('sidebar.close')" @click="showPanel = false">
@@ -348,6 +373,10 @@ onMounted(() => {
                       <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.8" />
                       <path d="M8 9h8M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
                     </svg>
+                    <svg v-else-if="link.to === '/invoices/my'" viewBox="0 0 24 24" fill="none">
+                      <rect x="4" y="3.5" width="16" height="17" rx="2" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
                     <svg v-else-if="link.to === '/bank'" viewBox="0 0 24 24" fill="none">
                       <path d="M3 9L12 4l9 5v2H3V9z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
                       <path d="M5 11v7M9 11v7M15 11v7M19 11v7M3 20h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
@@ -416,8 +445,21 @@ onMounted(() => {
             :class="{ 'is-active': route.path === '/transfer' }"
             to="/transfer"
           >
-            <span class="mobile-nav__chip">M</span>
+            <span class="mobile-nav__chip">D</span>
             <span class="mobile-nav__label">{{ t("nav.transfer") }}</span>
+          </NuxtLink>
+          <NuxtLink
+            class="mobile-nav__item"
+            :class="{ 'is-active': route.path === '/invoices/my' }"
+            to="/invoices/my"
+          >
+            <span class="mobile-nav__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="4" y="3.5" width="16" height="17" rx="2" stroke="currentColor" stroke-width="1.8" />
+                <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              </svg>
+            </span>
+            <span class="mobile-nav__label">{{ t("nav.invoices") }}</span>
           </NuxtLink>
           <NuxtLink
             class="mobile-nav__item"
@@ -462,11 +504,25 @@ onMounted(() => {
       </article>
     </TransitionGroup>
 
+    <div v-if="showRoundAnnouncement" class="modal" @click.self="closeRoundAnnouncement">
+      <div class="modal__panel round-modal">
+        <header class="round-modal__head">
+          <img src="/images/dim-coin.png" alt="" class="round-modal__icon" aria-hidden="true" />
+          <h3 class="round-modal__title">{{ t("roundPopup.title") }}</h3>
+        </header>
+        <p class="round-modal__body">{{ t("roundPopup.body1") }}</p>
+        <p class="round-modal__body">{{ t("roundPopup.body2") }}</p>
+        <button class="btn btn--primary round-modal__cta" type="button" @click="closeRoundAnnouncement">
+          {{ t("roundPopup.cta") }}
+        </button>
+      </div>
+    </div>
+
     <div v-if="showOnboarding" class="modal" @click.self="closeOnboarding(false)">
       <div class="modal__panel onboard-modal">
         <header class="onboard-modal__head">
           <div class="onboard-modal__title-wrap">
-            <img src="/images/m-coin.svg" alt="" class="onboard-modal__icon" aria-hidden="true" />
+            <img src="/images/dim-coin.png" alt="" class="onboard-modal__icon" aria-hidden="true" />
             <div>
               <h3 class="onboard-modal__title">{{ t("onboard.title") }}</h3>
               <p class="onboard-modal__subtitle">{{ t("onboard.subtitle") }}</p>
@@ -492,7 +548,7 @@ onMounted(() => {
 
         <article class="onboard-slide">
           <div class="onboard-slide__visual" :class="`is-step-${onboardingStep + 1}`">
-            <img v-if="onboardingStep === 0" src="/images/m-coin.svg" alt="M-coin" />
+            <img v-if="onboardingStep === 0" src="/images/dim-coin.png" alt="DIM-coin" />
             <svg v-else-if="onboardingStep === 1" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M3 9L12 4l9 5v2H3V9z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
               <path d="M5 11v7M9 11v7M15 11v7M19 11v7M3 20h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
@@ -522,7 +578,7 @@ onMounted(() => {
       <div class="modal__panel auth-modal">
         <header class="auth-modal__head">
           <div class="auth-modal__title-wrap">
-            <img src="/images/m-coin.svg" alt="" class="auth-modal__icon" aria-hidden="true" />
+            <img src="/images/dim-coin.png" alt="" class="auth-modal__icon" aria-hidden="true" />
             <div>
               <h3 class="auth-modal__title">{{ t("auth.login") }}</h3>
               <p class="auth-modal__subtitle">{{ t("auth.loginHint") }}</p>
@@ -568,7 +624,7 @@ onMounted(() => {
       <div class="modal__panel auth-modal">
         <header class="auth-modal__head">
           <div class="auth-modal__title-wrap">
-            <img src="/images/m-coin.svg" alt="" class="auth-modal__icon" aria-hidden="true" />
+            <img src="/images/dim-coin.png" alt="" class="auth-modal__icon" aria-hidden="true" />
             <div>
               <h3 class="auth-modal__title">{{ t("auth.register") }}</h3>
               <p class="auth-modal__subtitle">{{ t("auth.registerHint") }}</p>
