@@ -198,7 +198,7 @@ onMounted(() => {
     <header class="topbar">
       <div class="container topbar__inner">
         <NuxtLink class="brand" to="/">
-          <img class="coin-icon" src="/images/dim-coin.png" alt="coin" />
+          <img class="coin-icon" src="/images/dim-coin2.png" alt="coin" />
           <span>Holymarket</span>
         </NuxtLink>
 
@@ -215,7 +215,7 @@ onMounted(() => {
               <div class="topbar__player-main">
                 <p class="topbar__player-name">{{ currentUser.displayName }}</p>
                 <p class="topbar__player-coin">
-                  {{ currentUser.coin }} <img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
+                  {{ currentUser.coin }} <img src="/images/dim-coin2.png" alt="coin" class="coin-unit coin-unit--sm" />
                 </p>
               </div>
               <button
@@ -289,7 +289,7 @@ onMounted(() => {
         <aside class="slideover__panel">
           <header class="slideover__header">
             <div class="slideover__title-wrap">
-              <img src="/images/dim-coin.png" alt="coin" class="slideover__logo" />
+              <img src="/images/dim-coin2.png" alt="coin" class="slideover__logo" />
               <div>
                 <p class="slideover__kicker">{{ t("sidebar.menu") }}</p>
                 <h3 class="slideover__title">Holymarket</h3>
@@ -507,7 +507,7 @@ onMounted(() => {
     <div v-if="showRoundAnnouncement" class="modal" @click.self="closeRoundAnnouncement">
       <div class="modal__panel round-modal">
         <header class="round-modal__head">
-          <img src="/images/dim-coin.png" alt="" class="round-modal__icon" aria-hidden="true" />
+          <img src="/images/dim-coin2.png" alt="" class="round-modal__icon" aria-hidden="true" />
           <h3 class="round-modal__title">{{ t("roundPopup.title") }}</h3>
         </header>
         <p class="round-modal__body">{{ t("roundPopup.body1") }}</p>
@@ -522,7 +522,7 @@ onMounted(() => {
       <div class="modal__panel onboard-modal">
         <header class="onboard-modal__head">
           <div class="onboard-modal__title-wrap">
-            <img src="/images/dim-coin.png" alt="" class="onboard-modal__icon" aria-hidden="true" />
+            <img src="/images/dim-coin2.png" alt="" class="onboard-modal__icon" aria-hidden="true" />
             <div>
               <h3 class="onboard-modal__title">{{ t("onboard.title") }}</h3>
               <p class="onboard-modal__subtitle">{{ t("onboard.subtitle") }}</p>
@@ -548,7 +548,7 @@ onMounted(() => {
 
         <article class="onboard-slide">
           <div class="onboard-slide__visual" :class="`is-step-${onboardingStep + 1}`">
-            <img v-if="onboardingStep === 0" src="/images/dim-coin.png" alt="DIM-coin" />
+            <img v-if="onboardingStep === 0" src="/images/dim-coin2.png" alt="DIM-coin" />
             <svg v-else-if="onboardingStep === 1" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M3 9L12 4l9 5v2H3V9z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
               <path d="M5 11v7M9 11v7M15 11v7M19 11v7M3 20h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
@@ -578,7 +578,7 @@ onMounted(() => {
       <div class="modal__panel auth-modal">
         <header class="auth-modal__head">
           <div class="auth-modal__title-wrap">
-            <img src="/images/dim-coin.png" alt="" class="auth-modal__icon" aria-hidden="true" />
+            <img src="/images/dim-coin2.png" alt="" class="auth-modal__icon" aria-hidden="true" />
             <div>
               <h3 class="auth-modal__title">{{ t("auth.login") }}</h3>
               <p class="auth-modal__subtitle">{{ t("auth.loginHint") }}</p>
@@ -624,7 +624,7 @@ onMounted(() => {
       <div class="modal__panel auth-modal">
         <header class="auth-modal__head">
           <div class="auth-modal__title-wrap">
-            <img src="/images/dim-coin.png" alt="" class="auth-modal__icon" aria-hidden="true" />
+            <img src="/images/dim-coin2.png" alt="" class="auth-modal__icon" aria-hidden="true" />
             <div>
               <h3 class="auth-modal__title">{{ t("auth.register") }}</h3>
               <p class="auth-modal__subtitle">{{ t("auth.registerHint") }}</p>

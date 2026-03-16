@@ -74,13 +74,13 @@ const setQuickAmount = (value: number) => {
         <article class="bank-balance bank-balance--coin">
           <p class="bank-balance__label">{{ t("bank.myCoin") }}</p>
           <p class="value value--coin">
-            {{ currentUser.coin }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit" />
+            {{ currentUser.coin }}<img src="/images/dim-coin2.png" alt="coin" class="coin-unit" />
           </p>
         </article>
         <article class="bank-balance bank-balance--debt">
           <p class="bank-balance__label">{{ t("bank.myDebt") }}</p>
           <p class="value">
-            {{ currentUser.bankDebt }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit" />
+            {{ currentUser.bankDebt }}<img src="/images/dim-coin2.png" alt="coin" class="coin-unit" />
           </p>
         </article>
       </div>

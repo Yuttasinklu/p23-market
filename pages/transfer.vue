@@ -48,7 +48,7 @@ const submitTransfer = async () => {
         <div class="transfer-head__intro">
           <h1 class="title transfer-head__title">
             <span>ส่ง DIM-Coin</span>
-            <img src="/images/dim-coin.png" alt="DIM-Coin" class="coin-unit transfer-head__title-coin" />
+            <img src="/images/dim-coin2.png" alt="DIM-Coin" class="coin-unit transfer-head__title-coin" />
           </h1>
           <p class="muted transfer-head__subtitle">โอน DIM-Coin ระหว่างผู้เล่น</p>
         </div>
@@ -70,7 +70,7 @@ const submitTransfer = async () => {
           <div class="transfer-amount-wrap">
             <input id="amount" v-model.number="amount" class="input transfer-amount-input" type="number" min="1" required :disabled="!currentUser || isSubmitting" />
             <span class="transfer-amount-unit">
-              <img src="/images/dim-coin.png" alt="DIM-coin" class="coin-unit coin-unit--sm" />
+              <img src="/images/dim-coin2.png" alt="DIM-coin" class="coin-unit coin-unit--sm" />
             </span>
           </div>
           <div class="transfer-quick">
@@ -84,7 +84,7 @@ const submitTransfer = async () => {
               @click="setQuickAmount(quick)"
             >
               <span>{{ quick }}</span>
-              <img src="/images/dim-coin.png" alt="DIM-coin" class="coin-unit coin-unit--sm" />
+              <img src="/images/dim-coin2.png" alt="DIM-coin" class="coin-unit coin-unit--sm" />
             </button>
           </div>
         </div>

@@ -475,7 +475,7 @@ onBeforeUnmount(() => {
             <strong>{{ playerName(room.ownerId, room.ownerDisplayName) }}</strong>
           </p>
           <p class="value--coin">
-            {{ t("arena.stake") }}: {{ room.amount }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
+            {{ t("arena.stake") }}: {{ room.amount }}<img src="/images/dim-coin2.png" alt="coin" class="coin-unit coin-unit--sm" />
           </p>
         </div>
         <p class="arena-room-card__hint">{{ t("arena.choiceLocked") }}</p>
@@ -584,7 +584,7 @@ onBeforeUnmount(() => {
           <h3>{{ t("arena.vsTitle") }}</h3>
           <p class="muted">
             #{{ activeRoom.id }} · {{ t("arena.stake") }} {{ activeRoom.amount }}
-            <img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
+            <img src="/images/dim-coin2.png" alt="coin" class="coin-unit coin-unit--sm" />
           </p>
         </header>
 
@@ -654,7 +654,7 @@ onBeforeUnmount(() => {
             </p>
             <p class="arena-history__meta muted">
               #{{ match.roomId }} · {{ t("arena.stake") }} {{ match.amount }}
-              <img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
+              <img src="/images/dim-coin2.png" alt="coin" class="coin-unit coin-unit--sm" />
               · {{ match.ownerChoice }} vs {{ match.challengerChoice }}
             </p>
             <p class="arena-history__meta">

@@ -343,7 +343,7 @@ onMounted(async () => {
               <td>
                 <strong class="value--coin">
                   {{ invoice.amount }}
-                  <img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
+                  <img src="/images/dim-coin2.png" alt="coin" class="coin-unit coin-unit--sm" />
                 </strong>
               </td>
               <td>{{ playerName(invoice.createdByUserId) }}</td>
@@ -386,7 +386,7 @@ onMounted(async () => {
           {{ transferInvoice?.id }} •
           <strong class="value--coin">
             {{ transferInvoice?.amount }}
-            <img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
+            <img src="/images/dim-coin2.png" alt="coin" class="coin-unit coin-unit--sm" />
           </strong>
         </p>
         <form class="form" @submit.prevent="submitTransfer">

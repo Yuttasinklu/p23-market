@@ -146,10 +146,10 @@ const handleRun = async () => {
             <tbody>
               <tr v-for="item in latestPlayers" :key="item.playerId">
                 <td>{{ playerById(item.playerId)?.displayName }}</td>
-                <td>{{ item.coin }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" /></td>
-                <td>{{ item.bankDebt }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" /></td>
+                <td>{{ item.coin }}<img src="/images/dim-coin2.png" alt="coin" class="coin-unit coin-unit--sm" /></td>
+                <td>{{ item.bankDebt }}<img src="/images/dim-coin2.png" alt="coin" class="coin-unit coin-unit--sm" /></td>
                 <td :class="item.net >= 0 ? 'value--coin' : 'value--danger'">
-                  {{ item.net }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
+                  {{ item.net }}<img src="/images/dim-coin2.png" alt="coin" class="coin-unit coin-unit--sm" />
                 </td>
               </tr>
             </tbody>
@@ -163,7 +163,7 @@ const handleRun = async () => {
               <span>{{ playerById(item.fromId)?.displayName }}</span>
               <span class="settlement-payout__arrow">-&gt;</span>
               <span>{{ playerById(item.toId)?.displayName }}</span>
-              <strong class="value--coin">{{ item.amount }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" /></strong>
+              <strong class="value--coin">{{ item.amount }}<img src="/images/dim-coin2.png" alt="coin" class="coin-unit coin-unit--sm" /></strong>
             </p>
           </div>
           <p v-else class="muted">{{ t("common.noData") }}</p>

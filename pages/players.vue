@@ -68,7 +68,7 @@ const refreshLeaderboard = async () => {
           />
         </div>
         <div class="leaderboard-podium__block">
-          <img src="/images/dim-coin.png" alt="DIM-coin" class="leaderboard-podium__badge" />
+          <img src="/images/dim-coin2.png" alt="DIM-coin" class="leaderboard-podium__badge" />
           <p class="leaderboard-podium__score">{{ leaderboardScore(player.coin) }}</p>
           <p class="leaderboard-podium__debt">{{ t("common.debt") }}: {{ player.bankDebt }}</p>
           <p class="leaderboard-podium__rank">{{ player.rank }}</p>
@@ -96,7 +96,7 @@ const refreshLeaderboard = async () => {
             <td class="value--coin">{{ player.coin }}</td>
             <td>{{ player.bankDebt }}</td>
             <td :class="summaryClass(player.netWorth)">
-              {{ player.netWorth }}<img src="/images/dim-coin.png" alt="coin" class="coin-unit coin-unit--sm" />
+              {{ player.netWorth }}<img src="/images/dim-coin2.png" alt="coin" class="coin-unit coin-unit--sm" />
             </td>
           </tr>
         </tbody>
