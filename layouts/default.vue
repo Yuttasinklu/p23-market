@@ -9,7 +9,7 @@ const { currentUser, login, register, logout, refreshCurrentUserOnly, exchangeRa
 const { locale, setLocale, t } = useLocale();
 const { toasts, pushError, removeToast } = useToast();
 const ONBOARDING_SEEN_KEY = "p23-market-onboarding-seen";
-const ROUND_ANNOUNCEMENT_SEEN_KEY = "holymarket-round-announcement-seen-v1";
+const ROUND_ANNOUNCEMENT_SEEN_KEY = "holymarket-round-announcement-seen-v2";
 
 const route = useRoute();
 const showLogin = ref(false);
