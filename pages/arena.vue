@@ -448,6 +448,8 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="arena-page">
+    <NuxtLink class="page-back-link" to="/play">← Back to play</NuxtLink>
+
     <header class="card arena-head">
       <div class="row">
         <span class="pill">{{ openRooms.length }} {{ t("common.events") }}</span>
@@ -680,3 +682,19 @@ onBeforeUnmount(() => {
     </div>
   </section>
 </template>
+
+<style scoped>
+.page-back-link {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.35rem;
+  color: #9fc3ef;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.page-back-link:hover {
+  color: #dcecff;
+}
+</style>
