@@ -12,6 +12,7 @@ interface StageMember {
 }
 
 type VoteChoice = "rock" | "paper" | "scissors";
+type MajorityChoice = "left" | "right";
 
 const { currentUser } = useMMarket();
 const { pushError, pushSuccess } = useToast();
@@ -22,6 +23,10 @@ const {
   teamRpsSubmittedCounts,
   teamRpsResolvedRounds,
   teamRpsFinishedStates,
+  majorityDieStates,
+  majorityDieCountdowns,
+  majorityDieResolvedStages,
+  majorityDieFinishedStates,
   refreshRooms,
   createRoom,
   fetchRoom,
@@ -31,6 +36,7 @@ const {
   chooseTeam,
   startRoom,
   submitTeamRpsVote,
+  submitMajorityDieChoice,
 } = useMultiplayer();
 
 const showCreateModal = ref(false);
@@ -46,6 +52,8 @@ const isSubmittingVote = ref(false);
 
 const roomName = ref("");
 const entryStake = ref(20);
+const maxPlayers = ref(20);
+const stageTimeoutSec = ref(12);
 const selectedMode = ref<MultiplayerMode>("team_rps_vote");
 const activeStageRoom = ref<MultiplayerRoomListItem | null>(null);
 const joinedRoomIds = useState<string[]>("team-rps-joined-room-ids", () => []);
@@ -54,6 +62,8 @@ const voteSelections = useState<Record<string, VoteChoice>>("team-rps-my-votes",
 const clockTimer = ref<ReturnType<typeof setInterval> | null>(null);
 const roundResultTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const lingeringResolvedRound = ref<any | null>(null);
+const majorityChoiceSelections = useState<Record<string, MajorityChoice>>("majority-die-my-choices", () => ({}));
+const lingeringMajorityResolvedStage = ref<any | null>(null);
 
 const voteOptions: Array<{ value: VoteChoice; label: string; image: string }> = [
   { value: "rock", label: "Rock", image: "/images/rps-rock-card.png" },
@@ -70,9 +80,9 @@ const gameModeMeta: Record<MultiplayerMode, { label: string; description: string
   },
   majority_die: {
     label: "Majority Die",
-    description: "Coming later. The tab is ready, but the lobby is not connected in this release.",
+    description: "Live now. Pick left or right and survive by landing on the minority side.",
     route: "/team",
-    live: false,
+    live: true,
   },
   highest_win: {
     label: "Highest Win",
@@ -117,6 +127,10 @@ const activeTeamRpsState = computed(() =>
   activeStageRoom.value ? teamRpsStates.value[activeStageRoom.value.id] || null : null,
 );
 
+const activeMajorityDieState = computed(() =>
+  activeStageRoom.value ? majorityDieStates.value[activeStageRoom.value.id] || null : null,
+);
+
 const activeSubmittedCount = computed(() =>
   activeStageRoom.value ? teamRpsSubmittedCounts.value[activeStageRoom.value.id] || null : null,
 );
@@ -129,9 +143,28 @@ const activeFinishedState = computed(() =>
   activeStageRoom.value ? teamRpsFinishedStates.value[activeStageRoom.value.id] || null : null,
 );
 
+const activeMajorityCountdown = computed(() =>
+  activeStageRoom.value ? majorityDieCountdowns.value[activeStageRoom.value.id] || null : null,
+);
+
+const activeMajorityResolvedStage = computed(() =>
+  activeStageRoom.value ? majorityDieResolvedStages.value[activeStageRoom.value.id] || null : null,
+);
+
+const activeMajorityFinishedState = computed(() =>
+  activeStageRoom.value ? majorityDieFinishedStates.value[activeStageRoom.value.id] || null : null,
+);
+
 const displayResolvedRound = computed(() =>
   activeResolvedRound.value || lingeringResolvedRound.value,
 );
+
+const displayMajorityResolvedStage = computed(() =>
+  activeMajorityResolvedStage.value || lingeringMajorityResolvedStage.value,
+);
+
+const isCurrentModeTeamRps = computed(() => activeStageRoom.value?.mode === "team_rps_vote");
+const isCurrentModeMajorityDie = computed(() => activeStageRoom.value?.mode === "majority_die");
 
 const currentRoomKey = computed(() =>
   activeStageRoom.value && activeTeamRpsState.value?.round
@@ -147,21 +180,52 @@ const myTeam = computed<"A" | "B" | null>(() => {
 });
 
 const isHost = computed(() =>
-  Boolean(currentUser.value?.id && (activeTeamRpsState.value?.hostUserId || activeStageRoom.value?.hostUserId) === currentUser.value.id),
+  Boolean(
+    currentUser.value?.id &&
+      (
+        activeTeamRpsState.value?.hostUserId ||
+        activeMajorityDieState.value?.hostUserId ||
+        activeStageRoom.value?.hostUserId
+      ) === currentUser.value.id,
+  ),
 );
 
 const totalAssignedPlayers = computed(() =>
-  (activeTeamRpsState.value?.teamCounts.A || 0) + (activeTeamRpsState.value?.teamCounts.B || 0),
+  isCurrentModeTeamRps.value
+    ? (activeTeamRpsState.value?.teamCounts.A || 0) + (activeTeamRpsState.value?.teamCounts.B || 0)
+    : activeMajorityDieState.value?.players.length || activeRoomDetail.value?.players.length || 0,
 );
 
 const canStartGame = computed(() => {
-  const state = activeTeamRpsState.value;
-  if (!state || !isHost.value || state.status !== "waiting") return false;
-  const total = state.teamCounts.A + state.teamCounts.B;
-  return total >= 2 && total <= 10 && total % 2 === 0 && state.teamCounts.A === state.teamCounts.B;
+  if (!isHost.value) return false;
+  if (isCurrentModeTeamRps.value) {
+    const state = activeTeamRpsState.value;
+    if (!state || state.status !== "waiting") return false;
+    const total = state.teamCounts.A + state.teamCounts.B;
+    return total >= 2 && total <= 10 && total % 2 === 0 && state.teamCounts.A === state.teamCounts.B;
+  }
+  if (isCurrentModeMajorityDie.value) {
+    const state = activeMajorityDieState.value;
+    if (!state || state.status !== "waiting") return false;
+    const alivePlayers = state.players.filter((player) => player.alive !== false).length || state.players.length;
+    return alivePlayers >= 2;
+  }
+  return false;
 });
 
 const countdownSeconds = computed(() => {
+  if (isCurrentModeMajorityDie.value) {
+    const endsAt = activeMajorityDieState.value?.stageEndsAt || activeRoomDetail.value?.stageEndsAt;
+    if (endsAt) return Math.max(0, endsAt - nowTs.value);
+    const currentStage = Number(activeMajorityDieState.value?.stage || 0);
+    if (
+      activeMajorityCountdown.value?.secondsLeft !== undefined &&
+      activeMajorityCountdown.value.stage === currentStage
+    ) {
+      return Math.max(0, activeMajorityCountdown.value.secondsLeft);
+    }
+    return 0;
+  }
   const endsAt = activeTeamRpsState.value?.inputEndsAt;
   if (endsAt) return Math.max(0, endsAt - nowTs.value);
 
@@ -180,8 +244,22 @@ const myVote = computed(() =>
   currentRoomKey.value ? voteSelections.value[currentRoomKey.value] || null : null,
 );
 
+const currentMajorityKey = computed(() =>
+  activeStageRoom.value && activeMajorityDieState.value?.stage
+    ? `${activeStageRoom.value.id}:${activeMajorityDieState.value.stage}`
+    : "",
+);
+
+const myMajorityChoice = computed(() =>
+  currentMajorityKey.value ? majorityChoiceSelections.value[currentMajorityKey.value] || null : null,
+);
+
 const showRoundResultPhase = computed(() =>
   Boolean(displayResolvedRound.value) && !activeFinishedState.value,
+);
+
+const showMajorityResultPhase = computed(() =>
+  Boolean(displayMajorityResolvedStage.value) && !activeMajorityFinishedState.value,
 );
 
 const activeRoundNumber = computed(() =>
@@ -280,9 +358,65 @@ const stageTeams = computed(() => {
   return { alpha, beta };
 });
 
+const majorityPlayers = computed(() =>
+  activeMajorityDieState.value?.players || activeRoomDetail.value?.players || [],
+);
+
+const majorityAlivePlayers = computed(() =>
+  majorityPlayers.value.filter((player) => player.alive !== false),
+);
+
+const majorityEliminatedPlayers = computed(() =>
+  majorityPlayers.value.filter((player) => player.alive === false),
+);
+
+const isAliveInMajorityDie = computed(() =>
+  Boolean(
+    currentUser.value?.id &&
+      majorityAlivePlayers.value.some((player) => player.userId === currentUser.value?.id),
+  ),
+);
+
+const canSubmitMajorityChoice = computed(() =>
+  Boolean(isCurrentModeMajorityDie.value && isAliveInMajorityDie.value) &&
+  !myMajorityChoice.value &&
+  !showMajorityResultPhase.value &&
+  !activeMajorityFinishedState.value,
+);
+
+const majorityStageSummary = computed(() => {
+  const resolved = displayMajorityResolvedStage.value;
+  if (!resolved || !currentUser.value?.id) return "";
+  if (resolved.reason === "tie_replay") return "Draw stage";
+  if (resolved.reason === "single_side_replay") return "Replay stage";
+  return resolved.survivorUserIds.includes(currentUser.value.id) ? "You survived" : "You are out";
+});
+
+const majorityStageToneClass = computed(() => {
+  const resolved = displayMajorityResolvedStage.value;
+  if (!resolved || !currentUser.value?.id) return "is-draw";
+  if (resolved.reason !== "minority_survive") return "is-draw";
+  return resolved.survivorUserIds.includes(currentUser.value.id) ? "is-win" : "is-lose";
+});
+
+const majorityResultSideClass = (side: MajorityChoice) => {
+  const resolved = displayMajorityResolvedStage.value;
+  if (!resolved) return "";
+  if (resolved.reason !== "minority_survive" || !resolved.minoritySide) return "is-replay";
+  return resolved.minoritySide === side ? "is-survive" : "is-eliminated";
+};
+
+const majorityFinalWinnerRows = computed(() => activeMajorityFinishedState.value?.winners || []);
+
+const majorityFinalPayoutRows = computed(() => activeMajorityFinishedState.value?.payouts || []);
+
+const majorityFinalLoserRows = computed(() => activeMajorityFinishedState.value?.losers || []);
+
 const resetForm = () => {
   roomName.value = "";
   entryStake.value = 20;
+  maxPlayers.value = 20;
+  stageTimeoutSec.value = 12;
   selectedMode.value = "team_rps_vote";
 };
 
@@ -373,6 +507,8 @@ const submitCreateRoom = async () => {
       name: trimmedRoomName,
       mode: selectedMode.value,
       entryStake: Math.max(2, Math.trunc(Number(entryStake.value) || 2)),
+      maxPlayers: Math.max(2, Math.trunc(Number(maxPlayers.value) || 20)),
+      stageTimeoutSec: Math.max(5, Math.trunc(Number(stageTimeoutSec.value) || 12)),
     });
 
     pushSuccess("Room created.");
@@ -395,6 +531,7 @@ const submitCreateRoom = async () => {
 const openStage = async (room: MultiplayerRoomListItem) => {
   clearRoomRealtimeState(room.id);
   lingeringResolvedRound.value = null;
+  lingeringMajorityResolvedStage.value = null;
   activeStageRoom.value = room;
   showStageModal.value = true;
   isOpeningStage.value = true;
@@ -410,12 +547,14 @@ const openStage = async (room: MultiplayerRoomListItem) => {
 
 const closeStage = () => {
   lingeringResolvedRound.value = null;
+  lingeringMajorityResolvedStage.value = null;
   showStageModal.value = false;
   activeStageRoom.value = null;
 };
 
 const closeVoteModal = () => {
   lingeringResolvedRound.value = null;
+  lingeringMajorityResolvedStage.value = null;
   showVoteModal.value = false;
   activeStageRoom.value = null;
 };
@@ -432,6 +571,7 @@ const joinRoom = async () => {
 
   try {
     clearRoomRealtimeState(room.id);
+    lingeringMajorityResolvedStage.value = null;
     await joinRealtimeRoom(room.id);
     await fetchRoom(room.id, room.mode);
     joinedRoomIds.value = Array.from(new Set([...joinedRoomIds.value, room.id]));
@@ -485,16 +625,35 @@ const submitVote = async (choice: VoteChoice) => {
   }
 };
 
+const submitMajorityPick = async (choice: MajorityChoice) => {
+  if (!activeStageRoom.value || !activeMajorityDieState.value?.stage) return;
+  isSubmittingVote.value = true;
+  try {
+    await submitMajorityDieChoice(activeStageRoom.value.id, activeMajorityDieState.value.stage, choice);
+    if (currentMajorityKey.value) {
+      majorityChoiceSelections.value = {
+        ...majorityChoiceSelections.value,
+        [currentMajorityKey.value]: choice,
+      };
+    }
+  } catch (error) {
+    pushError(error instanceof Error ? error.message : "Unable to submit choice.");
+  } finally {
+    isSubmittingVote.value = false;
+  }
+};
+
 watch(
-  () => activeTeamRpsState.value?.status,
+  () => [activeTeamRpsState.value?.status, activeMajorityDieState.value?.status],
   (status) => {
-    if (status === "playing") {
+    const nextStatus = Array.isArray(status) ? (isCurrentModeMajorityDie.value ? status[1] : status[0]) : status;
+    if (nextStatus === "playing") {
       showStageModal.value = false;
       showVoteModal.value = true;
       return;
     }
 
-    if (status === "waiting" && activeStageRoom.value) {
+    if (nextStatus === "waiting" && activeStageRoom.value) {
       showVoteModal.value = false;
     }
   },
@@ -512,6 +671,19 @@ watch(
     }, 2200);
   },
 );
+
+watch(
+  activeMajorityResolvedStage,
+  (resolved) => {
+    if (!resolved) return;
+    lingeringMajorityResolvedStage.value = resolved;
+    if (roundResultTimer.value) clearTimeout(roundResultTimer.value);
+    roundResultTimer.value = setTimeout(() => {
+      lingeringMajorityResolvedStage.value = null;
+      roundResultTimer.value = null;
+    }, 2200);
+  },
+);
 </script>
 
 <template>
@@ -523,16 +695,21 @@ watch(
         <p class="team-lobby-hero__eyebrow">Team Lobby</p>
         <h1 class="team-lobby-hero__title">Pick a mode and join a room.</h1>
         <p class="team-lobby-hero__text">
-          Team RPS is live now. More team modes can be added here later.
+          Team RPS and Majority Die are live now. Highest Win can be added next.
         </p>
       </div>
 
       <div class="team-lobby-hero__panel">
         <p class="team-lobby-hero__panel-label">Live rooms</p>
         <strong class="team-lobby-hero__panel-value">{{ sortedRooms.length }}</strong>
-        <button class="btn team-lobby-hero__button" type="button" @click="openCreateModal">
-          Create room
-        </button>
+        <div class="team-lobby-hero__actions">
+          <button class="btn" type="button" :disabled="loadingRooms" @click="loadRooms">
+            {{ loadingRooms ? "Refreshing..." : "Refresh rooms" }}
+          </button>
+          <button class="btn team-lobby-hero__button" type="button" @click="openCreateModal">
+            Create room
+          </button>
+        </div>
       </div>
     </header>
 
@@ -615,6 +792,14 @@ watch(
               <label for="team-stake">Entry stake</label>
               <input id="team-stake" v-model.number="entryStake" class="input" type="number" min="2" />
             </div>
+            <div v-if="selectedMode === 'majority_die'" class="field">
+              <label for="team-max-players">Max players</label>
+              <input id="team-max-players" v-model.number="maxPlayers" class="input" type="number" min="2" max="20" />
+            </div>
+            <div v-if="selectedMode === 'majority_die'" class="field">
+              <label for="team-stage-timeout">Stage timer</label>
+              <input id="team-stage-timeout" v-model.number="stageTimeoutSec" class="input" type="number" min="5" />
+            </div>
           </div>
 
           <button class="btn btn--primary" type="submit" :disabled="isCreatingRoom">
@@ -630,7 +815,9 @@ watch(
           <div>
             <p class="team-stage-modal__eyebrow">{{ gameModeMeta[activeStageRoom.mode].label }}</p>
             <h3 class="team-stage-modal__title">{{ activeStageRoom.name }}</h3>
-            <p class="team-stage-modal__subtitle">Pick a side and get ready.</p>
+            <p class="team-stage-modal__subtitle">
+              {{ isCurrentModeTeamRps ? "Pick a side and get ready." : "Join the room and survive the minority side." }}
+            </p>
           </div>
           <button class="btn" type="button" @click="closeStage">Close</button>
         </header>
@@ -650,11 +837,11 @@ watch(
           </article>
           <article class="team-stage-stat">
             <span>Status</span>
-            <strong>{{ activeTeamRpsState?.status || activeStageRoom.status }}</strong>
+            <strong>{{ activeTeamRpsState?.status || activeMajorityDieState?.status || activeStageRoom.status }}</strong>
           </article>
         </section>
 
-        <section class="team-stage-prompt">
+        <section v-if="isCurrentModeTeamRps" class="team-stage-prompt">
           <p v-if="!joinedRoomIds.includes(activeStageRoom.id)" class="team-stage-prompt__text">
             Join this room first to pick a team.
           </p>
@@ -669,7 +856,7 @@ watch(
           </p>
         </section>
 
-        <section class="team-stage-board">
+        <section v-if="isCurrentModeTeamRps" class="team-stage-board">
           <article
             class="team-stage-side team-stage-side--alpha"
             :class="{ 'is-current-team': myTeam === 'A' }"
@@ -744,6 +931,58 @@ watch(
           </article>
         </section>
 
+        <section v-else class="majority-stage">
+          <div class="team-stage-prompt">
+            <p v-if="!joinedRoomIds.includes(activeStageRoom.id)" class="team-stage-prompt__text">
+              Join this room first to enter the survival board.
+            </p>
+            <p v-else-if="isAliveInMajorityDie" class="team-stage-prompt__text">
+              You are in. Pick left or right once the host starts.
+            </p>
+            <p v-else class="team-stage-prompt__text">
+              You are eliminated in this room.
+            </p>
+            <p class="team-stage-prompt__meta">
+              Alive: {{ majorityAlivePlayers.length }} · Eliminated: {{ majorityEliminatedPlayers.length }}
+            </p>
+          </div>
+
+          <div class="majority-stage__board">
+            <article class="majority-stage__lane majority-stage__lane--left">
+              <p class="team-stage-side__label">Left Side</p>
+              <strong class="team-stage-side__name">Minority survives</strong>
+              <div class="majority-stage__players">
+                <article v-for="player in majorityAlivePlayers.slice(0, 10)" :key="`alive-${player.userId}`" class="team-stage-player" :class="{ 'is-me': player.userId === currentUser?.id }">
+                  <img :src="avatarPath(player.avatarIndex || 0)" :alt="player.displayName" class="team-stage-player__avatar" />
+                  <div>
+                    <strong>{{ player.displayName }}</strong>
+                    <small>Alive</small>
+                  </div>
+                </article>
+              </div>
+            </article>
+
+            <article class="majority-stage__center">
+              <strong>{{ majorityAlivePlayers.length }}</strong>
+              <small>players alive</small>
+            </article>
+
+            <article class="majority-stage__lane majority-stage__lane--right">
+              <p class="team-stage-side__label">Out</p>
+              <strong class="team-stage-side__name">Fallen players</strong>
+              <div class="majority-stage__players">
+                <article v-for="player in majorityEliminatedPlayers.slice(0, 10)" :key="`out-${player.userId}`" class="team-stage-player">
+                  <img :src="avatarPath(player.avatarIndex || 0)" :alt="player.displayName" class="team-stage-player__avatar" />
+                  <div>
+                    <strong>{{ player.displayName }}</strong>
+                    <small>Out</small>
+                  </div>
+                </article>
+              </div>
+            </article>
+          </div>
+        </section>
+
         <footer class="team-stage-modal__actions">
           <button class="btn" type="button" @click="closeStage">Back to rooms</button>
           <button
@@ -772,118 +1011,259 @@ watch(
       </div>
     </div>
 
-    <div v-if="showVoteModal && activeStageRoom && activeTeamRpsState" class="modal" @click.self>
+    <div v-if="showVoteModal && activeStageRoom && (activeTeamRpsState || activeMajorityDieState)" class="modal" @click.self>
       <div class="modal__panel team-vote-modal" :class="voteModalToneClass">
-        <header class="team-vote-modal__head">
-          <div>
-            <p class="team-stage-modal__eyebrow">Round {{ activeTeamRpsState.round || 1 }}</p>
-            <h3 class="team-stage-modal__title">{{ activeStageRoom.name }}</h3>
-            <p class="team-stage-modal__subtitle">Choose before the timer ends.</p>
-          </div>
-          <div class="team-vote-modal__timer">
-            <span>Timer</span>
-            <strong>{{ countdownSeconds }}s</strong>
-          </div>
-        </header>
-
-        <section class="team-vote-modal__score">
-          <article class="team-stage-stat" :class="{ 'is-current-team': myTeam === 'A' }">
-            <span>{{ myTeam === "A" ? "Your team" : "Team A" }}</span>
-            <strong>{{ activeTeamRpsState.score.A }}</strong>
-          </article>
-          <article class="team-stage-stat" :class="{ 'is-current-team': myTeam === 'B' }">
-            <span>{{ myTeam === "B" ? "Your team" : "Team B" }}</span>
-            <strong>{{ activeTeamRpsState.score.B }}</strong>
-          </article>
-          <article class="team-stage-stat">
-            <span>Submitted</span>
-            <strong>
-              {{ activeSubmittedCount?.submittedA || 0 }}/{{ activeSubmittedCount?.totalA || activeTeamRpsState.teamCounts.A }}
-              ·
-              {{ activeSubmittedCount?.submittedB || 0 }}/{{ activeSubmittedCount?.totalB || activeTeamRpsState.teamCounts.B }}
-            </strong>
-          </article>
-        </section>
-
-        <section v-if="!showRoundResultPhase && !activeFinishedState" class="team-vote-modal__choices">
-          <button
-            v-for="option in voteOptions"
-            :key="option.value"
-            type="button"
-            class="team-vote-card"
-            :class="{ 'is-picked': myVote === option.value }"
-            :disabled="isSubmittingVote || !canSubmitVote"
-            @click="submitVote(option.value)"
-          >
-            <img :src="option.image" :alt="option.label" class="team-vote-card__image" />
-            <strong>{{ option.label }}</strong>
-          </button>
-        </section>
-
-        <p v-if="!showRoundResultPhase && !activeFinishedState" class="team-vote-modal__status">
-          <span v-if="myVote">Your decision: <strong>{{ myVote }}</strong></span>
-          <span v-else-if="myTeam">You are on Team {{ myTeam }}. Make your decision before time runs out.</span>
-          <span v-else>Pick a team in the waiting room first.</span>
-        </p>
-
-        <section
-          v-if="showRoundResultPhase && displayResolvedRound"
-          class="team-vote-result team-vote-result--round"
-          :class="roundResultToneClass"
-        >
-          <strong class="team-vote-result__winner">{{ myRoundOutcome || "Round complete" }}</strong>
-          <div v-if="myRoundChoice && opponentRoundChoice" class="team-vote-result__choices">
-            <article class="team-vote-result__choice">
-              <img
-                :src="voteOptions.find((option) => option.value === myRoundChoice)?.image"
-                :alt="myRoundChoice"
-                class="team-vote-result__choice-image"
-              />
-              <span>Your: {{ voteOptions.find((option) => option.value === myRoundChoice)?.label }}</span>
-            </article>
-            <span class="team-vote-result__vs">vs</span>
-            <article class="team-vote-result__choice">
-              <img
-                :src="voteOptions.find((option) => option.value === opponentRoundChoice)?.image"
-                :alt="opponentRoundChoice"
-                class="team-vote-result__choice-image"
-              />
-              <span>Opponent: {{ voteOptions.find((option) => option.value === opponentRoundChoice)?.label }}</span>
-            </article>
-          </div>
-          <p class="team-vote-result__next">Next round is loading...</p>
-        </section>
-
-        <section v-if="activeFinishedState" class="team-vote-result team-vote-result--final">
-          <p class="team-vote-result__label">Match finished</p>
-          <strong class="team-vote-result__winner">
-            {{ activeFinishedState.draw ? "Match draw" : `Team ${activeFinishedState.winnerTeam} win the match` }}
-          </strong>
-          <p v-if="activeFinishedState.score" class="team-vote-result__scoreline">
-            Final score: {{ activeFinishedState.score.A }} - {{ activeFinishedState.score.B }}
-          </p>
-          <div v-if="finishedWinnerMembers.length" class="team-vote-finished__group">
-            <p class="team-vote-result__label">Winners</p>
-            <div class="team-vote-finished__members">
-              <span v-for="winner in finishedWinnerMembers" :key="winner.userId" class="team-vote-finished__pill">
-                {{ winner.displayName }}
-              </span>
+        <template v-if="isCurrentModeTeamRps && activeTeamRpsState">
+          <header class="team-vote-modal__head">
+            <div>
+              <p class="team-stage-modal__eyebrow">Round {{ activeTeamRpsState.round || 1 }}</p>
+              <h3 class="team-stage-modal__title">{{ activeStageRoom.name }}</h3>
+              <p class="team-stage-modal__subtitle">Choose before the timer ends.</p>
             </div>
-          </div>
-          <div v-if="finishedPayoutRows.length" class="team-vote-finished__group">
-            <p class="team-vote-result__label">Payouts</p>
-            <div class="team-vote-finished__payouts">
-              <div v-for="row in finishedPayoutRows" :key="`${row.userId}-${row.amount}`" class="team-vote-finished__payout-row">
-                <span>{{ row.displayName }}</span>
-                <strong>+{{ row.amount }}</strong>
+            <div class="team-vote-modal__timer">
+              <span>Timer</span>
+              <strong>{{ countdownSeconds }}s</strong>
+            </div>
+          </header>
+
+          <section class="team-vote-modal__score">
+            <article class="team-stage-stat" :class="{ 'is-current-team': myTeam === 'A' }">
+              <span>{{ myTeam === "A" ? "Your team" : "Team A" }}</span>
+              <strong>{{ activeTeamRpsState.score.A }}</strong>
+            </article>
+            <article class="team-stage-stat" :class="{ 'is-current-team': myTeam === 'B' }">
+              <span>{{ myTeam === "B" ? "Your team" : "Team B" }}</span>
+              <strong>{{ activeTeamRpsState.score.B }}</strong>
+            </article>
+            <article class="team-stage-stat">
+              <span>Submitted</span>
+              <strong>
+                {{ activeSubmittedCount?.submittedA || 0 }}/{{ activeSubmittedCount?.totalA || activeTeamRpsState.teamCounts.A }}
+                ·
+                {{ activeSubmittedCount?.submittedB || 0 }}/{{ activeSubmittedCount?.totalB || activeTeamRpsState.teamCounts.B }}
+              </strong>
+            </article>
+          </section>
+
+          <section v-if="!showRoundResultPhase && !activeFinishedState" class="team-vote-modal__choices">
+            <button
+              v-for="option in voteOptions"
+              :key="option.value"
+              type="button"
+              class="team-vote-card"
+              :class="{ 'is-picked': myVote === option.value }"
+              :disabled="isSubmittingVote || !canSubmitVote"
+              @click="submitVote(option.value)"
+            >
+              <img :src="option.image" :alt="option.label" class="team-vote-card__image" />
+              <strong>{{ option.label }}</strong>
+            </button>
+          </section>
+
+          <p v-if="!showRoundResultPhase && !activeFinishedState" class="team-vote-modal__status">
+            <span v-if="myVote">Your decision: <strong>{{ myVote }}</strong></span>
+            <span v-else-if="myTeam">You are on Team {{ myTeam }}. Make your decision before time runs out.</span>
+            <span v-else>Pick a team in the waiting room first.</span>
+          </p>
+
+          <section
+            v-if="showRoundResultPhase && displayResolvedRound"
+            class="team-vote-result team-vote-result--round"
+            :class="roundResultToneClass"
+          >
+            <strong class="team-vote-result__winner">{{ myRoundOutcome || "Round complete" }}</strong>
+            <div v-if="myRoundChoice && opponentRoundChoice" class="team-vote-result__choices">
+              <article class="team-vote-result__choice">
+                <img
+                  :src="voteOptions.find((option) => option.value === myRoundChoice)?.image"
+                  :alt="myRoundChoice"
+                  class="team-vote-result__choice-image"
+                />
+                <span>Your: {{ voteOptions.find((option) => option.value === myRoundChoice)?.label }}</span>
+              </article>
+              <span class="team-vote-result__vs">vs</span>
+              <article class="team-vote-result__choice">
+                <img
+                  :src="voteOptions.find((option) => option.value === opponentRoundChoice)?.image"
+                  :alt="opponentRoundChoice"
+                  class="team-vote-result__choice-image"
+                />
+                <span>Opponent: {{ voteOptions.find((option) => option.value === opponentRoundChoice)?.label }}</span>
+              </article>
+            </div>
+            <p class="team-vote-result__next">Next round is loading...</p>
+          </section>
+
+          <section v-if="activeFinishedState" class="team-vote-result team-vote-result--final">
+            <p class="team-vote-result__label">Match finished</p>
+            <strong class="team-vote-result__winner">
+              {{ activeFinishedState.draw ? "Match draw" : `Team ${activeFinishedState.winnerTeam} win the match` }}
+            </strong>
+            <p v-if="activeFinishedState.score" class="team-vote-result__scoreline">
+              Final score: {{ activeFinishedState.score.A }} - {{ activeFinishedState.score.B }}
+            </p>
+            <div v-if="finishedWinnerMembers.length" class="team-vote-finished__group">
+              <p class="team-vote-result__label">Winners</p>
+              <div class="team-vote-finished__members">
+                <span v-for="winner in finishedWinnerMembers" :key="winner.userId" class="team-vote-finished__pill">
+                  {{ winner.displayName }}
+                </span>
               </div>
             </div>
-          </div>
-        </section>
+            <div v-if="finishedPayoutRows.length" class="team-vote-finished__group">
+              <p class="team-vote-result__label">Payouts</p>
+              <div class="team-vote-finished__payouts">
+                <div v-for="row in finishedPayoutRows" :key="`${row.userId}-${row.amount}`" class="team-vote-finished__payout-row">
+                  <span>{{ row.displayName }}</span>
+                  <strong>+{{ row.amount }}</strong>
+                </div>
+              </div>
+            </div>
+          </section>
 
-        <footer v-if="activeFinishedState" class="team-vote-modal__actions">
-          <button class="btn" type="button" @click="closeVoteModal">Close</button>
-        </footer>
+          <footer v-if="activeFinishedState" class="team-vote-modal__actions">
+            <button class="btn" type="button" @click="closeVoteModal">Close</button>
+          </footer>
+        </template>
+
+        <template v-if="isCurrentModeMajorityDie && activeMajorityDieState">
+          <header class="team-vote-modal__head">
+            <div>
+              <p class="team-stage-modal__eyebrow">Stage {{ activeMajorityDieState.stage || 1 }}</p>
+              <h3 class="team-stage-modal__title">{{ activeStageRoom.name }}</h3>
+              <p class="team-stage-modal__subtitle">Choose left or right. Only the minority side survives.</p>
+            </div>
+            <div class="team-vote-modal__timer">
+              <span>Timer</span>
+              <strong>{{ countdownSeconds }}s</strong>
+            </div>
+          </header>
+
+          <section class="team-vote-modal__score">
+            <article class="team-stage-stat">
+              <span>Alive</span>
+              <strong>{{ majorityAlivePlayers.length }}</strong>
+            </article>
+            <article class="team-stage-stat">
+              <span>Pot</span>
+              <strong>{{ activeMajorityDieState.stake }} <img src="/images/m-coin.svg" alt="coin" class="coin-unit coin-unit--sm" /></strong>
+            </article>
+            <article class="team-stage-stat">
+              <span>Status</span>
+              <strong>{{ isAliveInMajorityDie ? "In game" : "Out" }}</strong>
+            </article>
+          </section>
+
+          <section v-if="!showMajorityResultPhase && !activeMajorityFinishedState" class="majority-vote">
+            <button
+              type="button"
+              class="majority-vote__side majority-vote__side--left"
+              :class="{ 'is-picked': myMajorityChoice === 'left' }"
+              :disabled="isSubmittingVote || !canSubmitMajorityChoice"
+              @click="submitMajorityPick('left')"
+            >
+              <span class="majority-vote__label">Left</span>
+              <strong>Hide in the minority</strong>
+            </button>
+            <button
+              type="button"
+              class="majority-vote__side majority-vote__side--right"
+              :class="{ 'is-picked': myMajorityChoice === 'right' }"
+              :disabled="isSubmittingVote || !canSubmitMajorityChoice"
+              @click="submitMajorityPick('right')"
+            >
+              <span class="majority-vote__label">Right</span>
+              <strong>Hide in the minority</strong>
+            </button>
+          </section>
+
+          <p v-if="!showMajorityResultPhase && !activeMajorityFinishedState" class="team-vote-modal__status">
+            <span v-if="myMajorityChoice">Your side: <strong>{{ myMajorityChoice }}</strong></span>
+            <span v-else-if="isAliveInMajorityDie">Choose a side before the timer ends.</span>
+            <span v-else>You are eliminated. Watch the stage resolve.</span>
+          </p>
+
+          <section
+            v-if="showMajorityResultPhase && displayMajorityResolvedStage"
+            class="team-vote-result team-vote-result--round"
+            :class="majorityStageToneClass"
+          >
+            <strong class="team-vote-result__winner">{{ majorityStageSummary || "Stage complete" }}</strong>
+            <div class="majority-result-choices">
+              <article
+                class="majority-vote__side majority-result-card"
+                :class="['majority-vote__side--left', majorityResultSideClass('left')]"
+              >
+                <span class="majority-vote__label">Left</span>
+                <strong>{{ displayMajorityResolvedStage.pickCount.left }} players</strong>
+                <small v-if="displayMajorityResolvedStage.reason === 'minority_survive'">
+                  {{ displayMajorityResolvedStage.minoritySide === 'left' ? 'Survive' : 'Eliminated' }}
+                </small>
+                <small v-else>No elimination</small>
+              </article>
+
+              <article
+                class="majority-vote__side majority-result-card"
+                :class="['majority-vote__side--right', majorityResultSideClass('right')]"
+              >
+                <span class="majority-vote__label">Right</span>
+                <strong>{{ displayMajorityResolvedStage.pickCount.right }} players</strong>
+                <small v-if="displayMajorityResolvedStage.reason === 'minority_survive'">
+                  {{ displayMajorityResolvedStage.minoritySide === 'right' ? 'Survive' : 'Eliminated' }}
+                </small>
+                <small v-else>No elimination</small>
+              </article>
+            </div>
+            <p class="team-vote-result__next">
+              {{
+                displayMajorityResolvedStage.reason === "minority_survive"
+                  ? "Next stage is loading..."
+                  : "No elimination. Stage replay."
+              }}
+            </p>
+          </section>
+
+          <section v-if="activeMajorityFinishedState" class="team-vote-result team-vote-result--final">
+            <p class="team-vote-result__label">Match finished</p>
+            <strong class="team-vote-result__winner">
+              {{ majorityFinalWinnerRows.length > 1 ? `${majorityFinalWinnerRows.length} winners survive` : "Final survivor found" }}
+            </strong>
+            <p class="team-vote-result__scoreline">
+              Pot: {{ activeMajorityFinishedState.pot || activeMajorityDieState.stake }} ·
+              Winners: {{ majorityFinalWinnerRows.length }} ·
+              Losers: {{ majorityFinalLoserRows.length }}
+            </p>
+            <div v-if="majorityFinalWinnerRows.length" class="team-vote-finished__group">
+              <p class="team-vote-result__label">Survivors</p>
+              <div class="team-vote-finished__members">
+                <span v-for="winner in majorityFinalWinnerRows" :key="winner.userId" class="team-vote-finished__pill">
+                  {{ winner.displayName }}
+                </span>
+              </div>
+            </div>
+            <div v-if="majorityFinalLoserRows.length" class="team-vote-finished__group">
+              <p class="team-vote-result__label">Eliminated</p>
+              <div class="team-vote-finished__members">
+                <span v-for="loser in majorityFinalLoserRows" :key="loser.userId" class="team-vote-finished__pill is-muted">
+                  {{ loser.displayName }}
+                </span>
+              </div>
+            </div>
+            <div v-if="majorityFinalPayoutRows.length" class="team-vote-finished__group">
+              <p class="team-vote-result__label">Payouts</p>
+              <div class="team-vote-finished__payouts">
+                <div v-for="row in majorityFinalPayoutRows" :key="`${row.userId}-${row.amount}`" class="team-vote-finished__payout-row">
+                  <span>{{ row.displayName || row.userId }}</span>
+                  <strong>+{{ row.amount }}</strong>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <footer v-if="activeMajorityFinishedState" class="team-vote-modal__actions">
+            <button class="btn" type="button" @click="closeVoteModal">Close</button>
+          </footer>
+        </template>
       </div>
     </div>
   </section>
@@ -972,6 +1352,12 @@ watch(
 
 .team-lobby-hero__button {
   min-width: 180px;
+}
+
+.team-lobby-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
 }
 
 .team-mode-strip {
@@ -1297,6 +1683,57 @@ watch(
   text-align: right;
 }
 
+.majority-stage {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.majority-stage__board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.majority-stage__lane {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border-radius: 16px;
+  border: 1px solid rgba(141, 197, 255, 0.12);
+  background: rgba(13, 26, 51, 0.42);
+}
+
+.majority-stage__lane--left {
+  background: linear-gradient(180deg, rgba(20, 48, 87, 0.72), rgba(11, 25, 47, 0.84));
+}
+
+.majority-stage__lane--right {
+  background: linear-gradient(180deg, rgba(74, 31, 31, 0.72), rgba(38, 16, 16, 0.84));
+}
+
+.majority-stage__players {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.majority-stage__center {
+  display: grid;
+  place-items: center;
+  gap: 0.2rem;
+  min-height: 100%;
+  padding-top: 1.25rem;
+  text-align: center;
+}
+
+.majority-stage__center strong {
+  font-size: 1.8rem;
+}
+
+.majority-stage__center small {
+  color: #9ec4ee;
+}
+
 .team-vote-modal {
   width: min(820px, calc(100vw - 1rem));
   max-height: min(84vh, 900px);
@@ -1389,6 +1826,90 @@ watch(
   margin-top: 0.85rem;
   color: #d2e5fb;
   font-weight: 700;
+}
+
+.majority-vote {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.majority-vote__side {
+  display: grid;
+  gap: 0.4rem;
+  min-height: 170px;
+  align-content: end;
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(141, 197, 255, 0.14);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.majority-vote__side--left {
+  background: linear-gradient(180deg, rgba(31, 78, 151, 0.92), rgba(14, 33, 71, 0.96));
+}
+
+.majority-vote__side--right {
+  background: linear-gradient(180deg, rgba(164, 66, 66, 0.92), rgba(73, 23, 23, 0.96));
+}
+
+.majority-vote__side.is-picked {
+  border-color: rgba(255, 209, 117, 0.56);
+  box-shadow: 0 0 0 1px rgba(255, 209, 117, 0.16);
+}
+
+.majority-vote__label {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.majority-stage-result {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  flex-wrap: wrap;
+  font-weight: 700;
+}
+
+.majority-result-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.majority-result-card {
+  min-height: 0;
+}
+
+.majority-result-card small {
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 700;
+}
+
+.majority-result-card.is-survive {
+  border-color: rgba(87, 214, 148, 0.42);
+  box-shadow: 0 0 0 1px rgba(87, 214, 148, 0.16);
+}
+
+.majority-result-card.is-eliminated {
+  background: linear-gradient(180deg, rgba(74, 77, 84, 0.86), rgba(43, 45, 50, 0.94));
+  border-color: rgba(190, 198, 211, 0.18);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.majority-result-card.is-eliminated .majority-vote__label,
+.majority-result-card.is-eliminated small {
+  color: rgba(225, 231, 240, 0.78);
+}
+
+.majority-result-card.is-replay {
+  border-color: rgba(255, 212, 92, 0.28);
 }
 
 .team-vote-result {
@@ -1510,6 +2031,11 @@ watch(
   font-weight: 700;
 }
 
+.team-vote-finished__pill.is-muted {
+  background: rgba(255, 255, 255, 0.04);
+  color: #9fb5cf;
+}
+
 .team-vote-finished__payouts {
   display: grid;
   gap: 0.35rem;
@@ -1542,7 +2068,17 @@ watch(
     align-items: center;
   }
 
+  .team-lobby-hero__actions {
+    justify-content: flex-start;
+  }
+
   .team-stage-board {
+    grid-template-columns: 1fr;
+  }
+
+  .majority-stage__board,
+  .majority-vote,
+  .majority-result-choices {
     grid-template-columns: 1fr;
   }
 

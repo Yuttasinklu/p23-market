@@ -92,6 +92,58 @@ export interface TeamRpsFinished {
   endedAt: number;
 }
 
+export interface MajorityDieRoomState {
+  roomId: string;
+  mode: "majority_die";
+  status: "waiting" | "playing" | "resolved" | "closed";
+  stage: number;
+  stageEndsAt?: number | null;
+  entryStake: number;
+  stake: number;
+  hostUserId?: string;
+  players: MultiplayerRoomPlayer[];
+}
+
+export interface MajorityDieCountdown {
+  roomId: string;
+  stage: number;
+  secondsLeft: number;
+}
+
+export interface MajorityDieStageResolved {
+  roomId: string;
+  stage: number;
+  pickCount: { left: number; right: number };
+  minoritySide?: "left" | "right";
+  eliminatedUserIds: string[];
+  survivorUserIds: string[];
+  reason: "minority_survive" | "tie_replay" | "single_side_replay";
+  resolvedAt: number;
+}
+
+export interface MajorityDieFinished {
+  roomId: string;
+  mode: "majority_die";
+  winners: Array<{
+    userId: string;
+    displayName: string;
+    avatarIndex?: number;
+  }>;
+  losers?: Array<{
+    userId: string;
+    displayName: string;
+    avatarIndex?: number;
+  }>;
+  pot?: number;
+  payouts?: Array<{
+    userId: string;
+    displayName?: string;
+    avatarIndex?: number;
+    amount: number;
+  }>;
+  endedAt: number;
+}
+
 export interface MultiplayerRoomDetail {
   id: string;
   name: string;
@@ -134,6 +186,10 @@ export const useMultiplayer = () => {
   const teamRpsSubmittedCounts = useState<Record<string, TeamRpsSubmittedCount>>("team-rps-submitted-counts", () => ({}));
   const teamRpsResolvedRounds = useState<Record<string, TeamRpsRoundResolved>>("team-rps-resolved-rounds", () => ({}));
   const teamRpsFinishedStates = useState<Record<string, TeamRpsFinished>>("team-rps-finished-states", () => ({}));
+  const majorityDieStates = useState<Record<string, MajorityDieRoomState>>("majority-die-room-states", () => ({}));
+  const majorityDieCountdowns = useState<Record<string, MajorityDieCountdown>>("majority-die-countdowns", () => ({}));
+  const majorityDieResolvedStages = useState<Record<string, MajorityDieStageResolved>>("majority-die-resolved-stages", () => ({}));
+  const majorityDieFinishedStates = useState<Record<string, MajorityDieFinished>>("majority-die-finished-states", () => ({}));
 
   const socketOrigin = computed(() => normalizeOrigin(apiBaseUrl.value));
 
@@ -164,6 +220,8 @@ export const useMultiplayer = () => {
     name: string;
     mode: MultiplayerMode;
     entryStake: number;
+    maxPlayers?: number;
+    stageTimeoutSec?: number;
   }) => {
     const body =
       payload.mode === "team_rps_vote"
@@ -173,7 +231,10 @@ export const useMultiplayer = () => {
           }
         : {
             name: payload.name,
+            mode: payload.mode,
             entryStake: payload.entryStake,
+            maxPlayers: payload.maxPlayers || 20,
+            stageTimeoutSec: payload.stageTimeoutSec || 12,
           };
 
     const response = await apiFetch<{ ok?: boolean; room: MultiplayerRoomListItem }>(roomsBasePath(payload.mode), {
@@ -229,6 +290,22 @@ export const useMultiplayer = () => {
             hostUserId: rawRoom.hostUserId || "",
           },
         };
+      } else if (mode === "majority_die") {
+        const rawRoom = response.room as any;
+        majorityDieStates.value = {
+          ...majorityDieStates.value,
+          [roomId]: {
+            roomId,
+            mode: "majority_die",
+            status: rawRoom.status || "waiting",
+            stage: Number(rawRoom.stage || 0),
+            stageEndsAt: rawRoom.stageEndsAt ?? null,
+            entryStake: Number(rawRoom.entryStake || 0),
+            stake: Number(rawRoom.stake || 0),
+            hostUserId: rawRoom.hostUserId || "",
+            players: Array.isArray(rawRoom.players) ? rawRoom.players : [],
+          },
+        };
       }
     }
 
@@ -255,6 +332,22 @@ export const useMultiplayer = () => {
     const nextFinishedStates = { ...teamRpsFinishedStates.value };
     delete nextFinishedStates[roomId];
     teamRpsFinishedStates.value = nextFinishedStates;
+
+    const nextMajorityStates = { ...majorityDieStates.value };
+    delete nextMajorityStates[roomId];
+    majorityDieStates.value = nextMajorityStates;
+
+    const nextMajorityCountdowns = { ...majorityDieCountdowns.value };
+    delete nextMajorityCountdowns[roomId];
+    majorityDieCountdowns.value = nextMajorityCountdowns;
+
+    const nextMajorityResolved = { ...majorityDieResolvedStages.value };
+    delete nextMajorityResolved[roomId];
+    majorityDieResolvedStages.value = nextMajorityResolved;
+
+    const nextMajorityFinished = { ...majorityDieFinishedStates.value };
+    delete nextMajorityFinished[roomId];
+    majorityDieFinishedStates.value = nextMajorityFinished;
   };
 
   const ensureSocket = async () => {
@@ -338,6 +431,21 @@ export const useMultiplayer = () => {
             },
             inputEndsAt: payload.inputEndsAt ?? null,
             hostUserId: payload.hostUserId || previous?.hostUserId || "",
+          },
+        };
+      } else if ((payload.mode || previous?.mode) === "majority_die") {
+        majorityDieStates.value = {
+          ...majorityDieStates.value,
+          [payload.roomId]: {
+            roomId: payload.roomId,
+            mode: "majority_die",
+            status: payload.status || "waiting",
+            stage: Number(payload.stage || 0),
+            stageEndsAt: payload.stageEndsAt ?? previous?.stageEndsAt ?? null,
+            entryStake: Number(payload.entryStake || previous?.entryStake || 0),
+            stake: Number(payload.stake || previous?.stake || 0),
+            hostUserId: payload.hostUserId || previous?.hostUserId || "",
+            players: Array.isArray(payload.players) ? payload.players : previous?.players || [],
           },
         };
       }
@@ -434,6 +542,70 @@ export const useMultiplayer = () => {
       teamRpsSubmittedCounts.value = nextSubmittedCounts;
     });
 
+    multiplayerSocket.off("room:started");
+    multiplayerSocket.on("room:started", (payload: any) => {
+      const previous = majorityDieStates.value[payload.roomId];
+      if (!previous || previous.mode !== "majority_die") return;
+      majorityDieStates.value = {
+        ...majorityDieStates.value,
+        [payload.roomId]: {
+          ...previous,
+          status: payload.status || "playing",
+          stage: Number(payload.stage || 1),
+          stageEndsAt: payload.stageEndsAt ?? null,
+        },
+      };
+      const nextResolved = { ...majorityDieResolvedStages.value };
+      delete nextResolved[payload.roomId];
+      majorityDieResolvedStages.value = nextResolved;
+    });
+
+    multiplayerSocket.off("game:stage_countdown");
+    multiplayerSocket.on("game:stage_countdown", (payload: MajorityDieCountdown) => {
+      majorityDieCountdowns.value = {
+        ...majorityDieCountdowns.value,
+        [payload.roomId]: payload,
+      };
+    });
+
+    multiplayerSocket.off("game:stage_resolved");
+    multiplayerSocket.on("game:stage_resolved", (payload: MajorityDieStageResolved) => {
+      majorityDieResolvedStages.value = {
+        ...majorityDieResolvedStages.value,
+        [payload.roomId]: payload,
+      };
+      const nextCountdowns = { ...majorityDieCountdowns.value };
+      delete nextCountdowns[payload.roomId];
+      majorityDieCountdowns.value = nextCountdowns;
+
+      const previous = majorityDieStates.value[payload.roomId];
+      if (previous) {
+        const survivors = previous.players.map((player) => ({
+          ...player,
+          alive: payload.survivorUserIds.includes(player.userId),
+        }));
+        majorityDieStates.value = {
+          ...majorityDieStates.value,
+          [payload.roomId]: {
+            ...previous,
+            players: survivors,
+          },
+        };
+      }
+    });
+
+    multiplayerSocket.off("game:finished");
+    multiplayerSocket.on("game:finished", (payload: MajorityDieFinished) => {
+      if (payload.mode !== "majority_die") return;
+      majorityDieFinishedStates.value = {
+        ...majorityDieFinishedStates.value,
+        [payload.roomId]: payload,
+      };
+      const nextCountdowns = { ...majorityDieCountdowns.value };
+      delete nextCountdowns[payload.roomId];
+      majorityDieCountdowns.value = nextCountdowns;
+    });
+
     await new Promise<void>((resolve, reject) => {
       if (!multiplayerSocket) {
         reject(new Error("Socket not initialized."));
@@ -520,6 +692,11 @@ export const useMultiplayer = () => {
     socket.emit("team_rps:submit_vote", { roomId, round, choice });
   };
 
+  const submitMajorityDieChoice = async (roomId: string, stage: number, choice: "left" | "right") => {
+    const socket = await ensureSocket();
+    socket.emit("game:submit_choice", { roomId, stage, choice });
+  };
+
   return {
     rooms,
     roomDetails,
@@ -527,6 +704,10 @@ export const useMultiplayer = () => {
     teamRpsSubmittedCounts,
     teamRpsResolvedRounds,
     teamRpsFinishedStates,
+    majorityDieStates,
+    majorityDieCountdowns,
+    majorityDieResolvedStages,
+    majorityDieFinishedStates,
     refreshRooms,
     createRoom,
     fetchRoom,
@@ -536,5 +717,6 @@ export const useMultiplayer = () => {
     chooseTeam,
     startRoom,
     submitTeamRpsVote,
+    submitMajorityDieChoice,
   };
 };
