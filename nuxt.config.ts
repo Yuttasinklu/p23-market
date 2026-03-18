@@ -4,7 +4,8 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
     public: {
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'https://p23market-backend-production.up.railway.app/api/v1'
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'https://p23market-backend-production.up.railway.app/api/v1',
+      enabledLiveGame: process.env.ENABLED_LIVE_GAME === 'true'
     }
   },
   app: {

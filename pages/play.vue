@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { navigateTo } from "#app";
 import { useMMarket } from "~/composables/useMMarket";
+import { useRuntimeConfig } from "#imports";
 
 const { currentUser, isAuthenticated } = useMMarket();
+const config = useRuntimeConfig();
+const isLiveGameDisabled = computed(() => !config.public.enabledLiveGame);
 
 const paths = {
   arena: "/arena",
@@ -11,6 +14,7 @@ const paths = {
 
 const openMode = async (path: string) => {
   if (!isAuthenticated.value) return;
+  if (path === paths.multiplayer && isLiveGameDisabled.value) return;
   await navigateTo(path);
 };
 </script>
@@ -53,29 +57,40 @@ const openMode = async (path: string) => {
 
       <button
         class="arena-gateway__card card is-team"
-        :class="{ 'is-locked': !isAuthenticated }"
+        :class="{ 'is-locked': !isAuthenticated || isLiveGameDisabled, 'is-disabled-live': isLiveGameDisabled }"
         type="button"
         @click="openMode(paths.multiplayer)"
       >
         <span class="arena-gateway__beta">Beta version</span>
+        <div v-if="isLiveGameDisabled" class="arena-gateway__overlay">
+          <strong>Coming soon</strong>
+          <span>Live game is disabled right now.</span>
+        </div>
         <p class="arena-gateway__label">Live</p>
         <strong class="arena-gateway__name">Live Lobby</strong>
         <div class="arena-gateway__badges">
           <span class="arena-gateway__badge">Team RPS</span>
           <span class="arena-gateway__badge is-muted">Majority Die</span>
           <span class="arena-gateway__badge is-muted">Highest Number Win</span>
+          <span v-if="isLiveGameDisabled" class="arena-gateway__badge is-muted">Disabled</span>
           <span v-if="!isAuthenticated" class="arena-gateway__badge is-muted">Login required</span>
         </div>
         <p class="arena-gateway__copy">
           Browse live rooms, pick a mode, and join active multiplayer matches.
         </p>
-        <span class="arena-gateway__cta">{{ isAuthenticated ? "Open Live" : "Login first" }}</span>
+        <span class="arena-gateway__cta">
+          {{ isLiveGameDisabled ? "Coming soon" : isAuthenticated ? "Open Live" : "Login first" }}
+        </span>
       </button>
     </section>
   </section>
 </template>
 
 <style scoped>
+button {
+  border: 0;
+}
+
 .arena-gateway {
   display: grid;
   gap: 0.9rem;
@@ -154,6 +169,7 @@ const openMode = async (path: string) => {
 }
 
 .arena-gateway__card {
+  position: relative;
   display: grid;
   gap: 0.4rem;
   padding: 1rem;
@@ -177,10 +193,38 @@ const openMode = async (path: string) => {
   border-color: rgba(141, 197, 255, 0.14);
 }
 
+.arena-gateway__card.is-disabled-live {
+  overflow: hidden;
+}
+
 .arena-gateway__card.is-team {
   background:
     radial-gradient(circle at top right, rgba(85, 194, 255, 0.14), transparent 30%),
     rgba(10, 23, 46, 0.82);
+}
+
+.arena-gateway__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.2rem;
+  padding: 1rem;
+  background: rgba(6, 12, 24, 0.72);
+  backdrop-filter: blur(4px);
+  text-align: center;
+}
+
+.arena-gateway__overlay strong {
+  color: #ffffff;
+  font-size: 1.05rem;
+}
+
+.arena-gateway__overlay span {
+  color: rgba(220, 236, 255, 0.86);
+  font-size: 0.9rem;
 }
 
 .arena-gateway__beta {
