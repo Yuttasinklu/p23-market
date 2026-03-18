@@ -101,7 +101,7 @@ const links = [
 
 const desktopPrimaryLinks = [
   { to: "/transfer", labelKey: "nav.transfer", icon: "⇄" },
-  { to: "/arena", labelKey: "nav.arena", icon: "⚔" },
+  { to: "/play", labelKey: "nav.arena", icon: "⚔" },
   { to: "/bank", labelKey: "nav.bank", icon: "🏦" },
 ];
 
@@ -185,7 +185,7 @@ const desktopSecondaryLinks = links.filter(
       <slot />
     </main>
 
-    <NuxtLink class="arena-fab" to="/arena" :aria-label="t('nav.arena')">
+    <NuxtLink class="arena-fab" to="/play" :aria-label="t('nav.arena')">
       <span class="arena-fab__icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="currentColor">
           <path d="M8.1 7.2h7.8c2 0 3.2.6 3.8 2l1.1 2.7c.6 1.5.5 3.2-.2 4.6l-.7 1.4c-.4.8-1.2 1.3-2.1 1.3-.9 0-1.8-.5-2.2-1.3l-.8-1.5h-5.6l-.8 1.5c-.4.8-1.2 1.3-2.2 1.3-.9 0-1.7-.5-2.1-1.3l-.7-1.4c-.7-1.4-.8-3.1-.2-4.6L4.3 9.2c.6-1.4 1.8-2 3.8-2z" />

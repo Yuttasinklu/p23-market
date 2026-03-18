@@ -372,7 +372,7 @@ const submitCreateRoom = async () => {
     const room = await createRoom({
       name: trimmedRoomName,
       mode: selectedMode.value,
-      entryStake: Math.max(5, Math.trunc(Number(entryStake.value) || 5)),
+      entryStake: Math.max(2, Math.trunc(Number(entryStake.value) || 2)),
     });
 
     pushSuccess("Room created.");
@@ -516,6 +516,8 @@ watch(
 
 <template>
   <section class="team-lobby-page">
+    <NuxtLink class="page-back-link" to="/play">← Back to play</NuxtLink>
+
     <header class="team-lobby-hero">
       <div class="team-lobby-hero__copy">
         <p class="team-lobby-hero__eyebrow">Team Lobby</p>
@@ -611,7 +613,7 @@ watch(
           <div class="team-lobby-modal__grid">
             <div class="field">
               <label for="team-stake">Entry stake</label>
-              <input id="team-stake" v-model.number="entryStake" class="input" type="number" min="5" step="1" />
+              <input id="team-stake" v-model.number="entryStake" class="input" type="number" min="2" />
             </div>
           </div>
 
@@ -891,6 +893,20 @@ watch(
 .team-lobby-page {
   display: grid;
   gap: 0.9rem;
+}
+
+.page-back-link {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.35rem;
+  color: #9fc3ef;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.page-back-link:hover {
+  color: #dcecff;
 }
 
 .team-lobby-hero {
